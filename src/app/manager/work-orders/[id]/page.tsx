@@ -21,12 +21,16 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
   const workOrderId = Number(id);
   if (!Number.isInteger(workOrderId)) notFound();
   const supabase = await createClient();
-  const [{ data }, { data: workerData }] = await Promise.all([
-    supabase.from("work_order").select("id,work_order_number,job_number,client_reference,status,issued_at,start_date,completion_due_date,client_supervisor_name,client_supervisor_phone,notes,additional_instructions,client:client_id(name,abn),customer:customer_id(name,phone),site:site_id(id,street_address,suburb,state,postcode,access_notes,site_contact(name,phone)),work_order_totals(subtotal_cents,gst_rate,gst_cents,total_cents),task(id,description,quantity,unit,area_label,status,revised_since_viewed,trade_section:trade_section_id(trade_category:trade_category_id(name)),task_pricing(unit_rate_cents,line_total_cents),assignment(id,worker_id,is_lead,status,worker:worker_id(user_profile:user_id(display_name))),schedule_entry(id,planned_date,start_time,estimated_hours,worker_id)),attachment(id,content_type,size_bytes,deleted_at)").eq("id", workOrderId).single(),
+  const [{ data, error: orderError }, { data: workerData }, { data: attachmentData, error: attachmentError }] = await Promise.all([
+    supabase.from("work_order").select("id,work_order_number,job_number,client_reference,status,issued_at,start_date,completion_due_date,client_supervisor_name,client_supervisor_phone,notes,additional_instructions,client:client_id(name,abn),customer:customer_id(name,phone),site:site_id(id,street_address,suburb,state,postcode,access_notes,site_contact(name,phone)),work_order_totals(subtotal_cents,gst_rate,gst_cents,total_cents),task(id,description,quantity,unit,area_label,status,revised_since_viewed,trade_section:trade_section_id(trade_category:trade_category_id(name)),task_pricing(unit_rate_cents,line_total_cents),assignment(id,worker_id,is_lead,status,worker:worker_id(user_profile:user_id(display_name))),schedule_entry(id,planned_date,start_time,estimated_hours,worker_id))").eq("id", workOrderId).single(),
     supabase.from("worker").select("id,user_profile:user_id(display_name,is_active)").order("id"),
+    supabase.from("attachment").select("id,content_type,size_bytes,deleted_at").eq("owner_type", "work_order").eq("owner_id", workOrderId),
   ]);
+  if (orderError?.code === "PGRST116") notFound();
+  if (orderError) throw new Error(`Could not load work order: ${orderError.message}`);
   if (!data) notFound();
-  const order = data as unknown as WorkOrderDetail;
+  if (attachmentError) throw new Error(`Could not load work order attachments: ${attachmentError.message}`);
+  const order = { ...data, attachment: attachmentData ?? [] } as unknown as WorkOrderDetail;
   const workers = (workerData ?? []).filter((row) => row.user_profile && (row.user_profile as unknown as { is_active: boolean }).is_active).map((row) => ({ id: row.id, name: (row.user_profile as unknown as { display_name: string }).display_name }));
   const grouped = order.task.reduce<Record<string, TaskRow[]>>((groups, task) => { const key = task.trade_section?.trade_category?.name ?? "Miscellaneous"; (groups[key] ??= []).push(task); return groups; }, {});
   const address = order.site ? `${order.site.street_address}, ${order.site.suburb} ${order.site.state} ${order.site.postcode}` : "";
