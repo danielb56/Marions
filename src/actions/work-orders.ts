@@ -1,0 +1,101 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { assertRole } from "@/lib/auth";
+import { workOrderInputSchema } from "@/lib/domain";
+import { logger } from "@/lib/redact";
+import { createClient } from "@/lib/supabase/server";
+import type { ActionState } from "@/actions/types";
+
+export async function createWorkOrder(_: ActionState, formData: FormData): Promise<ActionState> {
+  await assertRole("manager");
+  let tasks: unknown = [];
+  try { tasks = JSON.parse(String(formData.get("tasks") ?? "[]")); } catch { return { error: "The task list could not be read." }; }
+  const raw = {
+    clientName: formData.get("clientName"), customerName: formData.get("customerName"), customerPhone: formData.get("customerPhone"),
+    streetAddress: formData.get("streetAddress"), suburb: formData.get("suburb"), state: formData.get("state"), postcode: formData.get("postcode"),
+    siteContactName: formData.get("siteContactName"), siteContactPhone: formData.get("siteContactPhone"), workOrderNumber: formData.get("workOrderNumber"),
+    jobNumber: formData.get("jobNumber"), clientReference: formData.get("clientReference"), supervisorName: formData.get("supervisorName"), supervisorPhone: formData.get("supervisorPhone"),
+    issuedAt: formData.get("issuedAt"), startDate: formData.get("startDate"), dueDate: formData.get("dueDate"), notes: formData.get("notes"), additionalInstructions: formData.get("additionalInstructions"),
+    subtotalCents: formData.get("subtotalCents"), gstRate: formData.get("gstRate"), gstCents: formData.get("gstCents"), totalCents: formData.get("totalCents"),
+    totalOverride: formData.get("totalOverride") !== "false", duplicateReason: formData.get("duplicateReason"), tasks,
+  };
+  const parsed = workOrderInputSchema.safeParse(raw);
+  if (!parsed.success) return { error: "Check the highlighted information and try again.", fieldErrors: z.flattenError(parsed.error).fieldErrors };
+  const payload = {
+    ...parsed.data,
+    tasks: parsed.data.tasks.map((task) => ({ ...task, unitRateCents: task.unitRate === "" || task.unitRate == null ? null : Math.round(Number(task.unitRate) * 100) })),
+  };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_work_order_bundle", { p_payload: payload });
+  if (error) {
+    logger.error("work_order.create_failed", error);
+    const duplicate = error.message.toLowerCase().includes("duplicate");
+    return { error: duplicate ? "A work order with that number or client reference already exists. Add a duplicate reason if this is intentional." : "The work order could not be saved." };
+  }
+  revalidatePath("/manager"); revalidatePath("/manager/work-orders");
+  redirect(`/manager/work-orders/${data}`);
+}
+
+export async function assignWholeOrder(_: ActionState, formData: FormData): Promise<ActionState> {
+  await assertRole("manager");
+  const workOrderId = Number(formData.get("workOrderId"));
+  const workerId = Number(formData.get("workerId"));
+  if (!Number.isInteger(workOrderId) || !Number.isInteger(workerId)) return { error: "Choose a worker." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("assign_whole_order", { p_work_order_id: workOrderId, p_worker_id: workerId, p_preserve_existing: formData.get("preserveExisting") === "on" });
+  if (error) return { error: error.message };
+  revalidatePath(`/manager/work-orders/${workOrderId}`); revalidatePath("/manager");
+  return { ok: true, message: `${data ?? 0} tasks assigned.` };
+}
+
+export async function assignTask(_: ActionState, formData: FormData): Promise<ActionState> {
+  await assertRole("manager");
+  const taskId = Number(formData.get("taskId"));
+  const workerIds = formData.getAll("workerIds").map(Number).filter(Number.isInteger);
+  const leadWorkerId = Number(formData.get("leadWorkerId"));
+  if (!taskId || !workerIds.length || !leadWorkerId) return { error: "Choose at least one worker and a lead." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("assign_task", { p_task_id: taskId, p_worker_ids: workerIds, p_lead_worker_id: leadWorkerId });
+  if (error) return { error: error.message };
+  revalidatePath("/manager/work-orders"); revalidatePath("/manager");
+  return { ok: true, message: "Task assignment updated." };
+}
+
+export async function scheduleTask(_: ActionState, formData: FormData): Promise<ActionState> {
+  await assertRole("manager");
+  const taskId = Number(formData.get("taskId"));
+  const workerId = Number(formData.get("workerId"));
+  const dates = String(formData.get("dates") ?? "").split(",").map((date) => date.trim()).filter(Boolean);
+  if (!taskId || !workerId || !dates.length) return { error: "Choose a worker and at least one date." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("schedule_task", { p_task_id: taskId, p_worker_id: workerId, p_dates: dates, p_start_time: String(formData.get("startTime") ?? "") || null, p_estimated_hours: Number(formData.get("estimatedHours")) || null });
+  if (error) return { error: error.message };
+  revalidatePath("/manager/calendar"); revalidatePath("/manager/work-orders");
+  return { ok: true, message: dates.length > 1 ? "Multi-day schedule saved." : "Task scheduled." };
+}
+
+export async function cancelWorkOrder(formData: FormData) {
+  const profile = await assertRole("manager");
+  const workOrderId = Number(formData.get("workOrderId"));
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!workOrderId || !reason) throw new Error("A cancellation reason is required");
+  const supabase = await createClient();
+  const { error } = await supabase.from("work_order").update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_reason: reason }).eq("id", workOrderId).eq("tenant_id", profile.tenant_id);
+  if (error) throw new Error("Could not cancel work order");
+  revalidatePath("/manager/work-orders"); redirect("/manager/work-orders");
+}
+
+export async function reopenTask(formData: FormData) {
+  await assertRole("manager");
+  const taskId = Number(formData.get("taskId"));
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!taskId || !reason) throw new Error("A reason is required");
+  const supabase = await createClient();
+  const { error } = await supabase.from("task").update({ status: "changes_requested", completed_at: null, revised_since_viewed: true }).eq("id", taskId);
+  if (error) throw new Error("Could not reopen task");
+  await supabase.from("note").insert({ tenant_id: (await assertRole("manager")).tenant_id, parent_type: "task", parent_id: taskId, author_user_id: (await assertRole("manager")).id, body: reason, visibility: "worker_visible", note_type: "problem" });
+  revalidatePath("/manager/work-orders");
+}

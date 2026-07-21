@@ -1,0 +1,161 @@
+import { z } from "zod";
+
+export const APP_ROLES = ["manager", "worker"] as const;
+export type AppRole = (typeof APP_ROLES)[number];
+
+export const TASK_STATUSES = [
+  "draft",
+  "ready",
+  "assigned",
+  "scheduled",
+  "in_progress",
+  "completion_submitted",
+  "changes_requested",
+  "blocked",
+  "completed",
+  "cancelled",
+] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const WORK_ORDER_STATUSES = [
+  "draft",
+  "ready",
+  "assigned",
+  "scheduled",
+  "in_progress",
+  "changes_requested",
+  "blocked",
+  "completed",
+  "signed_off",
+  "cancelled",
+] as const;
+export type WorkOrderStatus = (typeof WORK_ORDER_STATUSES)[number];
+
+export const UNITS = ["ea", "m2", "lm", "m3", "hr"] as const;
+export const TRADE_CATEGORIES = [
+  "Carpentry",
+  "Cleaning",
+  "Insulation",
+  "Painting",
+  "Plastering",
+  "Preliminaries",
+  "Waste Removal",
+  "Miscellaneous",
+] as const;
+
+export type UserProfile = {
+  id: string;
+  tenant_id: string;
+  role: AppRole;
+  worker_id: number | null;
+  display_name: string;
+  email: string;
+  phone: string | null;
+  is_active: boolean;
+  mfa_enrolled: boolean;
+};
+
+export const taskInputSchema = z.object({
+  trade: z.string().trim().min(1, "Trade is required"),
+  area: z.string().trim().max(120).optional().default(""),
+  description: z.string().trim().min(2, "Description is required").max(1000),
+  quantity: z.coerce.number().positive().max(999999),
+  unit: z.enum(UNITS),
+  unitRate: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
+});
+
+export const workOrderInputSchema = z.object({
+  clientId: z.coerce.number().int().positive().optional(),
+  clientName: z.string().trim().min(2).max(200),
+  customerName: z.string().trim().max(200).optional().default(""),
+  customerPhone: z.string().trim().max(40).optional().default(""),
+  streetAddress: z.string().trim().min(3).max(300),
+  suburb: z.string().trim().min(2).max(100),
+  state: z.string().trim().length(3).default("NSW"),
+  postcode: z.string().trim().regex(/^\d{4}$/, "Enter a four-digit postcode"),
+  siteContactName: z.string().trim().max(200).optional().default(""),
+  siteContactPhone: z.string().trim().max(40).optional().default(""),
+  workOrderNumber: z.string().trim().min(1).max(100),
+  jobNumber: z.string().trim().max(100).optional().default(""),
+  clientReference: z.string().trim().max(100).optional().default(""),
+  supervisorName: z.string().trim().max(200).optional().default(""),
+  supervisorPhone: z.string().trim().max(40).optional().default(""),
+  issuedAt: z.string().optional().default(""),
+  startDate: z.string().optional().default(""),
+  dueDate: z.string().optional().default(""),
+  notes: z.string().max(10000).optional().default(""),
+  additionalInstructions: z.string().max(10000).optional().default(""),
+  subtotalCents: z.coerce.number().int().min(0),
+  gstRate: z.coerce.number().min(0).max(1).default(0.1),
+  gstCents: z.coerce.number().int().min(0),
+  totalCents: z.coerce.number().int().min(0),
+  totalOverride: z.boolean().default(true),
+  duplicateReason: z.string().trim().max(500).optional().default(""),
+  tasks: z.array(taskInputSchema).min(1, "Add at least one task").max(200),
+});
+
+export type WorkOrderInput = z.infer<typeof workOrderInputSchema>;
+
+export function parseTaskLines(input: string) {
+  const headerNames = new Set(TRADE_CATEGORIES.map((trade) => trade.toLowerCase()));
+  let trade = "Miscellaneous";
+  const tasks: Array<z.input<typeof taskInputSchema>> = [];
+
+  for (const originalLine of input.split(/\r?\n/)) {
+    const line = originalLine.trim();
+    if (!line || /^material$/i.test(line)) continue;
+    if (headerNames.has(line.replace(/\s+material$/i, "").toLowerCase())) {
+      trade = TRADE_CATEGORIES.find((name) => name.toLowerCase() === line.replace(/\s+material$/i, "").toLowerCase()) ?? trade;
+      continue;
+    }
+    const match = line.match(/^(.*?)\s+(\d+(?:\.\d+)?)\s*\/\s*(ea|m2|lm|m3|hr)\s*$/i);
+    if (!match) continue;
+    tasks.push({
+      trade,
+      area: "",
+      description: match[1].trim(),
+      quantity: Number(match[2]),
+      unit: match[3].toLowerCase() as (typeof UNITS)[number],
+      unitRate: "",
+    });
+  }
+  return tasks;
+}
+
+export function deriveWorkOrderStatus(statuses: TaskStatus[]): WorkOrderStatus {
+  const active = statuses.filter((status) => status !== "cancelled");
+  if (!active.length) return "cancelled";
+  if (active.includes("blocked")) return "blocked";
+  if (active.includes("changes_requested")) return "changes_requested";
+  if (active.every((status) => status === "completed")) return "signed_off";
+  if (active.includes("completion_submitted")) return "in_progress";
+  if (active.includes("in_progress")) return "in_progress";
+  if (active.every((status) => ["scheduled", "completed"].includes(status))) return "scheduled";
+  if (active.some((status) => ["assigned", "scheduled", "completed"].includes(status))) return "assigned";
+  if (active.every((status) => status === "ready")) return "ready";
+  return "draft";
+}
+
+export const FORBIDDEN_WORKER_KEYS = [
+  "unit_rate",
+  "unitRate",
+  "line_total",
+  "lineTotal",
+  "subtotal",
+  "gst_cents",
+  "gstCents",
+  "total_cents",
+  "totalCents",
+  "task_pricing",
+  "work_order_totals",
+] as const;
+
+export function assertWorkerSafe(value: unknown) {
+  const serialised = JSON.stringify(value);
+  for (const key of FORBIDDEN_WORKER_KEYS) {
+    if (new RegExp(`"${key}"\\s*:`).test(serialised)) {
+      throw new Error("Unsafe worker response blocked");
+    }
+  }
+  return value;
+}

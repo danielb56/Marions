@@ -1,0 +1,13 @@
+{
+  "name": "Marion Work Orders",
+  "short_name": "Marion",
+  "description": "Assigned work, schedules and field completion for trade teams.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f2ec",
+  "theme_color": "#173f45",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon", "purpose": "any" }
+  ]
+}
