@@ -8,11 +8,16 @@ export default {
   fetch: openNextWorker.fetch,
 
   async scheduled(_controller, env, ctx) {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      throw new Error("CRON_SECRET is not configured");
+    }
+
     const response = await openNextWorker.fetch(
       new Request(notificationCronUrl, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${env.CRON_SECRET}`,
+          Authorization: `Bearer ${cronSecret}`,
         },
       }),
       env,

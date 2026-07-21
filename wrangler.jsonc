@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "marion-work-orders",
+  "name": "marions",
   "main": "./custom-worker.ts",
   "compatibility_date": "2026-07-21",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -8,24 +8,6 @@
   "assets": {
     "directory": "./.open-next/assets",
     "binding": "ASSETS"
-  },
-  "secrets": {
-    "required": [
-      "NEXT_PUBLIC_APP_URL",
-      "NEXT_PUBLIC_SUPABASE_URL",
-      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-      "SUPABASE_SECRET_KEY",
-      "R2_ACCOUNT_ID",
-      "R2_ACCESS_KEY_ID",
-      "R2_SECRET_ACCESS_KEY",
-      "R2_BUCKET",
-      "RESEND_API_KEY",
-      "RESEND_FROM",
-      "TWILIO_ACCOUNT_SID",
-      "TWILIO_AUTH_TOKEN",
-      "TWILIO_FROM",
-      "CRON_SECRET"
-    ]
   },
   "triggers": {
     "crons": ["*/5 * * * *"]

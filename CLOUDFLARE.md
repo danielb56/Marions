@@ -6,7 +6,7 @@ This repository is ready for Cloudflare Workers Builds. The one-time setup below
 
 1. In the Cloudflare dashboard, open **Workers & Pages**, choose **Create application**, then import an existing Git repository.
 2. Authorise GitHub if prompted and select `danielb56/Marions`.
-3. Use `marion-work-orders` as the Worker name and `main` as the production branch.
+3. Use `marions` as the Worker name and `main` as the production branch.
 4. Leave the root directory blank (the application is at the repository root).
 5. Configure these commands:
 
@@ -28,24 +28,43 @@ Do not put server credentials in variables prefixed with `NEXT_PUBLIC_`.
 
 ## 3. Add Worker variables and secrets
 
-Under the Worker's **Settings -> Variables and Secrets**, add the following runtime configuration as encrypted secrets. Using encrypted bindings for the complete runtime environment keeps deployment validation deterministic and avoids exposing provider metadata unnecessarily. The three `NEXT_PUBLIC_` values must also be present here because server-side requests read them at runtime; their browser-visible copies still come from the build variables in the previous step.
+The first deployment can complete without credentials so that Cloudflare can create the Worker. Do not use the application with real data until the required values below are configured and a new deployment has completed.
+
+Under the Worker's **Settings -> Variables and Secrets**, add these required plain-text variables. The three values must also be present in the build configuration because server-side requests read them at runtime while Next.js embeds their browser-visible copies at build time.
 
 - `NEXT_PUBLIC_APP_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+Add these required encrypted secrets:
+
 - `SUPABASE_SECRET_KEY`
-- `R2_ACCOUNT_ID`
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `R2_BUCKET`
-- `RESEND_API_KEY`
-- `RESEND_FROM`
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_FROM`
 - `CRON_SECRET` — generate at least 32 random characters
 
+Photo uploads require these additional plain-text variables:
+
+- `R2_ACCOUNT_ID`
+- `R2_BUCKET`
+
+Add these photo-upload values as encrypted secrets:
+
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+
+Outbound notifications require these additional plain-text variables:
+
+- `RESEND_FROM`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_FROM`
+
+Add these notification-provider values as encrypted secrets:
+
+- `RESEND_API_KEY`
+- `TWILIO_AUTH_TOKEN`
+
 Resend and Twilio values may be omitted until outbound email or SMS is enabled. R2 credentials may be omitted until photo uploads are enabled. `SUPABASE_SECRET_KEY` and `CRON_SECRET` must never be exposed to browser code or committed to Git.
+
+After saving the required values, trigger a new deployment. Because the `NEXT_PUBLIC_` values are compiled into the browser bundle, changing only the runtime settings is not sufficient.
 
 The Wrangler configuration uses `keep_vars: true`, so Git deployments preserve values managed in the Cloudflare dashboard. Wrangler never stores secret values in this repository.
 
