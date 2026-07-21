@@ -1,12 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { assertWorkerSafe, deriveWorkOrderStatus, parseTaskLines } from "@/lib/domain";
-import { calculateGst, toCents } from "@/lib/utils";
+import { toCents } from "@/lib/utils";
 
 describe("Australian work-order money", () => {
-  it("round-trips the supplied work order totals as integer cents", () => {
-    const result = calculateGst(toCents("$2,000.00")!, 0.1);
-    expect(result).toEqual({ subtotalCents: 200000, gstCents: 20000, totalCents: 220000 });
-  });
+  it("stores the supplied work order total as integer cents", () => expect(toCents("$2,200.00")).toBe(220000));
   it("never creates floating point cent fragments", () => expect(toCents("19.99")).toBe(1999));
 });
 

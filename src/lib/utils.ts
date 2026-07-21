@@ -22,11 +22,6 @@ export function toCents(value: string | number | null | undefined) {
   return Math.round((amount + Number.EPSILON) * 100);
 }
 
-export function calculateGst(subtotalCents: number, gstRate = 0.1) {
-  const gstCents = Math.round(subtotalCents * gstRate);
-  return { subtotalCents, gstCents, totalCents: subtotalCents + gstCents };
-}
-
 export function formatDate(value: string | null | undefined, pattern = "d MMM yyyy") {
   if (!value) return "Not set";
   try {

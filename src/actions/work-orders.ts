@@ -19,14 +19,16 @@ export async function createWorkOrder(_: ActionState, formData: FormData): Promi
     siteContactName: formData.get("siteContactName"), siteContactPhone: formData.get("siteContactPhone"), workOrderNumber: formData.get("workOrderNumber"),
     jobNumber: formData.get("jobNumber"), clientReference: formData.get("clientReference"), supervisorName: formData.get("supervisorName"), supervisorPhone: formData.get("supervisorPhone"),
     issuedAt: formData.get("issuedAt"), startDate: formData.get("startDate"), dueDate: formData.get("dueDate"), notes: formData.get("notes"), additionalInstructions: formData.get("additionalInstructions"),
-    subtotalCents: formData.get("subtotalCents"), gstRate: formData.get("gstRate"), gstCents: formData.get("gstCents"), totalCents: formData.get("totalCents"),
-    totalOverride: formData.get("totalOverride") !== "false", duplicateReason: formData.get("duplicateReason"), tasks,
+    totalCents: formData.get("totalCents"), duplicateReason: formData.get("duplicateReason"), tasks,
   };
   const parsed = workOrderInputSchema.safeParse(raw);
   if (!parsed.success) return { error: "Check the highlighted information and try again.", fieldErrors: z.flattenError(parsed.error).fieldErrors };
   const payload = {
     ...parsed.data,
-    tasks: parsed.data.tasks.map((task) => ({ ...task, unitRateCents: task.unitRate === "" || task.unitRate == null ? null : Math.round(Number(task.unitRate) * 100) })),
+    subtotalCents: parsed.data.totalCents,
+    gstRate: 0,
+    gstCents: 0,
+    totalOverride: true,
   };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_work_order_bundle", { p_payload: payload });
@@ -75,6 +77,22 @@ export async function scheduleTask(_: ActionState, formData: FormData): Promise<
   if (error) return { error: error.message };
   revalidatePath("/manager/calendar"); revalidatePath("/manager/work-orders");
   return { ok: true, message: dates.length > 1 ? "Multi-day schedule saved." : "Task scheduled." };
+}
+
+export async function unscheduleEntry(_: ActionState, formData: FormData): Promise<ActionState> {
+  await assertRole("manager");
+  const scheduleEntryId = Number(formData.get("scheduleEntryId"));
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!Number.isInteger(scheduleEntryId) || scheduleEntryId < 1) return { error: "The scheduled date is invalid." };
+  if (reason.length < 2 || reason.length > 500) return { error: "Enter a reason between 2 and 500 characters." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("unschedule_entry", { p_schedule_entry_id: scheduleEntryId, p_reason: reason });
+  if (error) return { error: error.message };
+  revalidatePath("/manager/calendar");
+  revalidatePath("/manager/work-orders");
+  revalidatePath("/worker");
+  revalidatePath("/worker/upcoming");
+  return { ok: true, message: "Scheduled date removed and the worker was notified." };
 }
 
 export async function cancelWorkOrder(formData: FormData) {
