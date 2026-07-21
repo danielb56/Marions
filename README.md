@@ -8,7 +8,7 @@ A secure work-order management MVP for Australian construction maintenance and t
 - Supabase Postgres 16, Auth, MFA and Row Level Security
 - Cloudflare R2 private object storage with short-lived, object-scoped signed URLs
 - Resend email and Twilio SMS adapters, dispatched by a protected cron endpoint
-- Vercel hosting and scheduled notification dispatch
+- Cloudflare Workers hosting through OpenNext, with Git-based deploys and a native Cron Trigger
 - Vitest, pgTAP and Playwright test harnesses
 
 Operational and financial data are physically separated. `task` and `work_order` contain worker-safe information. `task_pricing`, `work_order_totals`, `extraction_result` and full `audit_event` values are manager-only under RLS. Worker pages query explicit `worker_task_safe` and `worker_job_safe` allowlist views.
@@ -91,6 +91,8 @@ pnpm typecheck
 pnpm test
 pnpm test:coverage
 pnpm build
+pnpm build:cloudflare
+pnpm preview:cloudflare
 pnpm test:e2e
 ```
 
@@ -100,8 +102,8 @@ Database policy tests run with `supabase test db`. End-to-end tests require a mi
 
 1. Create and link a Supabase project, apply migrations, disable public sign-up and configure the production redirect URL.
 2. Create a private R2 bucket, credentials restricted to that bucket and production CORS.
-3. Add environment variables to Vercel and deploy the Next.js project.
-4. Add the same random `CRON_SECRET` to Vercel. `vercel.json` dispatches queued notifications every five minutes.
+3. Follow [CLOUDFLARE.md](CLOUDFLARE.md) once to connect `danielb56/Marions` and configure build/runtime variables. Every subsequent push to `main` deploys automatically.
+4. Add a random 32+ character `CRON_SECRET` as a Worker secret. Cloudflare dispatches queued notifications every five minutes through the native Cron Trigger.
 5. Configure Resend and Twilio credentials, verify the sender/domain, then enable SMS in Manager settings.
 6. Enable Supabase PITR. Schedule `scripts/backup.sh` weekly with a database URL and independent R2 backup credentials, then test a restore.
 

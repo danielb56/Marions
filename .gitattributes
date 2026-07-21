@@ -1,0 +1,2 @@
+# Wrangler's generated runtime definitions contain a few intentional trailing spaces.
+cloudflare-env.d.ts -whitespace

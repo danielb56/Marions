@@ -15,8 +15,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm cf:typecheck
       - run: pnpm test
       - run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://build-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_placeholder_123456789
+      - run: pnpm build:cloudflare
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://build-placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_placeholder_123456789
