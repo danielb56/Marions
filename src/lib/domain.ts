@@ -61,7 +61,6 @@ export const taskInputSchema = z.object({
   description: z.string().trim().min(2, "Description is required").max(1000),
   quantity: z.coerce.number().positive().max(999999),
   unit: z.enum(UNITS),
-  unitRate: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
 });
 
 export const workOrderInputSchema = z.object({
@@ -85,11 +84,10 @@ export const workOrderInputSchema = z.object({
   dueDate: z.string().optional().default(""),
   notes: z.string().max(10000).optional().default(""),
   additionalInstructions: z.string().max(10000).optional().default(""),
-  subtotalCents: z.coerce.number().int().min(0),
-  gstRate: z.coerce.number().min(0).max(1).default(0.1),
-  gstCents: z.coerce.number().int().min(0),
-  totalCents: z.coerce.number().int().min(0),
-  totalOverride: z.boolean().default(true),
+  totalCents: z.preprocess(
+    (value) => value === "" || value == null ? undefined : value,
+    z.coerce.number().int().min(0, "Enter the work order total"),
+  ),
   duplicateReason: z.string().trim().max(500).optional().default(""),
   tasks: z.array(taskInputSchema).min(1, "Add at least one task").max(200),
 });
@@ -116,7 +114,6 @@ export function parseTaskLines(input: string) {
       description: match[1].trim(),
       quantity: Number(match[2]),
       unit: match[3].toLowerCase() as (typeof UNITS)[number],
-      unitRate: "",
     });
   }
   return tasks;

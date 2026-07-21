@@ -12,7 +12,7 @@ export default async function SettingsPage() {
   const profile = await requireRole("manager");
   const supabase = await createClient();
   const [{ data: tenant }, { data: teamData }] = await Promise.all([
-    supabase.from("tenant").select("name,abn,default_gst_rate,retention_years,sms_enabled,mfa_required_for_managers").eq("id", profile.tenant_id).single(),
+    supabase.from("tenant").select("name,abn,retention_years,sms_enabled,mfa_required_for_managers").eq("id", profile.tenant_id).single(),
     supabase.from("user_profile").select("id,display_name,email,phone,role,is_active").eq("tenant_id", profile.tenant_id).order("display_name"),
   ]);
   if (!tenant) return null;
