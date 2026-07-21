@@ -37,6 +37,10 @@ yarn-error.log*
 !.env.example
 .dev.vars*
 
+# Supabase CLI local link state
+/supabase/.temp/
+/supabase/.branches/
+
 # provider tooling
 .vercel
 
