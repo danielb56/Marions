@@ -32,7 +32,9 @@ Open `http://localhost:3000`. Copy the local Supabase URL and publishable/secret
 There is no public sign-up. After migrations are applied:
 
 ```bash
-pnpm seed:manager --email manager@example.com --password 'a-unique-password-12+' --name 'Manager Name' --tenant 'Company Name'
+read -s "MANAGER_PASSWORD?Manager password: "; echo
+MANAGER_PASSWORD="$MANAGER_PASSWORD" pnpm seed:manager --email manager@example.com --name 'Manager Name' --tenant 'Company Name'
+unset MANAGER_PASSWORD
 ```
 
 Sign in with that account. Because manager MFA is required by default, Marion immediately walks the manager through TOTP authenticator enrolment. Optionally load the sample Bentino-style order:

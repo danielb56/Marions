@@ -80,7 +80,9 @@ The Wrangler configuration uses `keep_vars: true`, so Git deployments preserve v
 Run this locally with `.env.local` pointed at the production Supabase project:
 
 ```bash
-pnpm seed:manager --email manager@example.com --password 'a-unique-password-12+' --name 'Manager Name' --tenant 'Company Name'
+read -s "MANAGER_PASSWORD?Manager password: "; echo
+MANAGER_PASSWORD="$MANAGER_PASSWORD" pnpm seed:manager --email manager@example.com --name 'Manager Name' --tenant 'Company Name'
+unset MANAGER_PASSWORD
 ```
 
 There is no public sign-up. The first manager is guided through TOTP MFA enrolment on first sign-in.
