@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { assertRole } from "@/lib/auth";
-import { workOrderInputSchema } from "@/lib/domain";
+import { parseScheduleDates, workOrderInputSchema } from "@/lib/domain";
 import { logger } from "@/lib/redact";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/actions/types";
@@ -45,12 +45,15 @@ export async function assignWholeOrder(_: ActionState, formData: FormData): Prom
   await assertRole("manager");
   const workOrderId = Number(formData.get("workOrderId"));
   const workerId = Number(formData.get("workerId"));
-  if (!Number.isInteger(workOrderId) || !Number.isInteger(workerId)) return { error: "Choose a worker." };
+  const dates = parseScheduleDates(String(formData.get("dates") ?? ""));
+  if (!Number.isInteger(workOrderId) || workOrderId < 1 || !Number.isInteger(workerId) || workerId < 1) return { error: "Choose a worker." };
+  if (!dates) return { error: "Choose between 1 and 62 valid schedule dates." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("assign_whole_order", { p_work_order_id: workOrderId, p_worker_id: workerId, p_preserve_existing: formData.get("preserveExisting") === "on" });
+  const { data, error } = await supabase.rpc("assign_and_schedule_whole_order", { p_work_order_id: workOrderId, p_worker_id: workerId, p_dates: dates, p_preserve_existing: formData.get("preserveExisting") === "on" });
   if (error) return { error: error.message };
-  revalidatePath(`/manager/work-orders/${workOrderId}`); revalidatePath("/manager");
-  return { ok: true, message: `${data ?? 0} tasks assigned.` };
+  const result = data as { assignedTasks?: number; scheduledDays?: number } | null;
+  revalidatePath(`/manager/work-orders/${workOrderId}`); revalidatePath("/manager"); revalidatePath("/manager/calendar"); revalidatePath("/worker"); revalidatePath("/worker/upcoming");
+  return { ok: true, message: `${result?.assignedTasks ?? 0} tasks assigned across ${result?.scheduledDays ?? dates.length} day${dates.length === 1 ? "" : "s"}.` };
 }
 
 export async function assignTask(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -70,12 +73,15 @@ export async function scheduleTask(_: ActionState, formData: FormData): Promise<
   await assertRole("manager");
   const taskId = Number(formData.get("taskId"));
   const workerId = Number(formData.get("workerId"));
-  const dates = String(formData.get("dates") ?? "").split(",").map((date) => date.trim()).filter(Boolean);
-  if (!taskId || !workerId || !dates.length) return { error: "Choose a worker and at least one date." };
+  const dates = parseScheduleDates(String(formData.get("dates") ?? ""));
+  if (!Number.isInteger(taskId) || taskId < 1 || !Number.isInteger(workerId) || workerId < 1) return { error: "Choose a worker." };
+  if (!dates) return { error: "Choose between 1 and 62 valid schedule dates." };
   const supabase = await createClient();
+  const { data: task, error: taskError } = await supabase.from("task").select("work_order_id").eq("id", taskId).single();
+  if (taskError || !task) return { error: "The task could not be found." };
   const { error } = await supabase.rpc("schedule_task", { p_task_id: taskId, p_worker_id: workerId, p_dates: dates, p_start_time: String(formData.get("startTime") ?? "") || null, p_estimated_hours: Number(formData.get("estimatedHours")) || null });
   if (error) return { error: error.message };
-  revalidatePath("/manager/calendar"); revalidatePath("/manager/work-orders");
+  revalidatePath(`/manager/work-orders/${task.work_order_id}`); revalidatePath("/manager/calendar"); revalidatePath("/manager/work-orders"); revalidatePath("/worker"); revalidatePath("/worker/upcoming");
   return { ok: true, message: dates.length > 1 ? "Multi-day schedule saved." : "Task scheduled." };
 }
 
