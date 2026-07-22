@@ -11,6 +11,9 @@ describe("whole-order automatic task scheduling", () => {
     expect(migration).toContain("base_tasks_per_day := task_count / date_count");
     expect(migration).toContain("extra_days := task_count % date_count");
     expect(migration).toContain("day_capacity := base_tasks_per_day");
+    expect(migration).toContain("if extra_days > 0 then");
+    expect(migration).toContain("if date_index <= extra_days then");
+    expect(migration).not.toMatch(/if [^\n]*\+ case/);
   });
 
   it("creates consecutive one-hour task bookings from 8:00am", () => {

@@ -53,7 +53,11 @@ begin
   if task_count > 0 then
     base_tasks_per_day := task_count / date_count;
     extra_days := task_count % date_count;
-    if base_tasks_per_day + case when extra_days > 0 then 1 else 0 end > 16 then
+    day_capacity := base_tasks_per_day;
+    if extra_days > 0 then
+      day_capacity := day_capacity + 1;
+    end if;
+    if day_capacity > 16 then
       raise exception 'Choose more dates. A day can hold at most 16 one-hour tasks starting at 8:00am';
     end if;
   end if;
@@ -102,7 +106,10 @@ begin
     end if;
 
     loop
-      day_capacity := base_tasks_per_day + case when date_index <= extra_days then 1 else 0 end;
+      day_capacity := base_tasks_per_day;
+      if date_index <= extra_days then
+        day_capacity := day_capacity + 1;
+      end if;
       exit when slot_in_day < day_capacity;
       date_index := date_index + 1;
       slot_in_day := 0;
