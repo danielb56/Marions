@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isScopeEndLine, parseWorkOrder } from "@/lib/pdf/parse-work-order";
 
-// Text as produced by extractWorkOrderText() from the REME PAINTING sample:
+// Text as produced in the browser by extractWorkOrderText() from the sample:
 // pages 1-2 only, stopping at the anti-slavery / "for your reference" marker.
 const SAMPLE = [
   "Bentino Pty Ltd",

@@ -1,14 +1,12 @@
-import "server-only";
 import { getDocumentProxy } from "unpdf";
 import { isScopeEndLine } from "@/lib/pdf/parse-work-order";
 
-// Text extraction only. unpdf ships a serverless build of pdf.js that runs in
-// the Cloudflare Workers runtime, so no Node-only PDF library is needed.
+// Text extraction runs in the manager's browser. Keeping pdf.js out of the
+// server bundle lets the application stay within Cloudflare's free Worker size
+// limit while the normal manager-only create action remains the only save path.
 //
-// We read the document page by page and STOP as soon as a scope-end marker is
-// seen (end of the totals block / the signature line). The 60+ pages of policy
-// boilerplate that follow are never rendered - saving work and keeping the
-// parser fed with work-order content only.
+// We read the document page by page and stop as soon as a scope-end marker is
+// seen. Policy boilerplate after the work order is never parsed.
 
 export type ExtractResult = {
   text: string;
@@ -23,7 +21,6 @@ type Row = { y: number; cells: Cell[] };
 // Rebuild visual lines from pdf.js text items: group items by their y position,
 // order each line left-to-right by x, then order lines top-to-bottom. This keeps
 // the quantity column on the same line as the start of its description.
-// pdf.js items are a union (text + marked-content); we keep only positioned text.
 async function renderPageLines(page: { getTextContent: () => Promise<{ items: unknown[] }> }): Promise<string[]> {
   const content = await page.getTextContent();
   const rows: Row[] = [];

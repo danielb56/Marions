@@ -8,9 +8,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
   experimental: {
     serverActions: {
-      // The import action validates the PDF itself at 25 MB. Leave a small
-      // allowance for multipart encoding overhead before that validation runs.
-      bodySizeLimit: "26mb",
+      bodySizeLimit: "2mb",
     },
   },
   async headers() {
