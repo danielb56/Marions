@@ -119,6 +119,19 @@ export function parseTaskLines(input: string) {
   return tasks;
 }
 
+export function parseScheduleDates(input: string, maximum = 62): string[] | null {
+  const values = [...new Set(input.split(",").map((value) => value.trim()).filter(Boolean))].sort();
+  if (!values.length || values.length > maximum) return null;
+  for (const value of values) {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) return null;
+  }
+  return values;
+}
+
 export function deriveWorkOrderStatus(statuses: TaskStatus[]): WorkOrderStatus {
   const active = statuses.filter((status) => status !== "cancelled");
   if (!active.length) return "cancelled";

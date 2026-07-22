@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertWorkerSafe, deriveWorkOrderStatus, parseTaskLines } from "@/lib/domain";
+import { assertWorkerSafe, deriveWorkOrderStatus, parseScheduleDates, parseTaskLines } from "@/lib/domain";
 import { toCents } from "@/lib/utils";
 
 describe("Australian work-order money", () => {
@@ -11,6 +11,20 @@ describe("task paste helper", () => {
   it("groups recognised lines and ignores the Material artefact", () => {
     const tasks = parseTaskLines("Painting Material\nMaterial\nPrepare walls 6/m2\nCarpentry\nReplace skirting 3/lm");
     expect(tasks).toMatchObject([{ trade: "Painting", description: "Prepare walls", quantity: 6, unit: "m2" }, { trade: "Carpentry", description: "Replace skirting", quantity: 3, unit: "lm" }]);
+  });
+});
+
+describe("schedule date parsing", () => {
+  it("deduplicates and sorts valid calendar dates", () => {
+    expect(parseScheduleDates("2026-07-24,2026-07-22,2026-07-24")).toEqual(["2026-07-22", "2026-07-24"]);
+  });
+
+  it.each(["", "2026-02-30", "22/07/2026", "2026-13-01"])("rejects invalid date input %s", (input) => {
+    expect(parseScheduleDates(input)).toBeNull();
+  });
+
+  it("enforces the server-side selection limit", () => {
+    expect(parseScheduleDates("2026-07-22,2026-07-23", 1)).toBeNull();
   });
 });
 
