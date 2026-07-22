@@ -106,10 +106,10 @@ describe("work-order PDF parser - scope", () => {
   });
 });
 
-describe("work-order PDF parser - totals", () => {
-  it("parses money as integer cents and derives the GST rate", () => {
+describe("work-order PDF parser - total cost", () => {
+  it("parses the work-order total as integer cents", () => {
     const draft = parseWorkOrder(SAMPLE);
-    expect(draft.totals).toEqual({ subtotalCents: 200000, gstRate: 0.1, gstCents: 20000, totalCents: 220000 });
+    expect(draft.totals).toEqual({ totalCents: 220000 });
     expect(draft.confidence).toBeGreaterThanOrEqual(0.8);
   });
 });

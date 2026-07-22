@@ -31,7 +31,7 @@ export type WorkOrderDraftFields = {
 export type WorkOrderDraft = {
   fields: WorkOrderDraftFields;
   tasks: ParsedTask[];
-  totals: { subtotalCents: number; gstRate: number; gstCents: number; totalCents: number };
+  totals: { totalCents: number };
   confidence: number;
   parserVersion: string;
 };
@@ -193,15 +193,15 @@ export function parseWorkOrder(text: string): WorkOrderDraft {
   }
   flush();
 
-  // Totals (parsed from the full captured text, up to the Totals block).
+  // Parse the single work-order total. Subtotal and GST are only fallbacks for
+  // documents that omit a final total; task-level pricing is not imported.
   const all = lines.join("\n");
   const subtotalCents = toCents((all.match(/Subtotal\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? 0;
   const gstCents = toCents((all.match(/\bGST\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? 0;
   const totalCents = toCents((all.match(/\bTotal\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? subtotalCents + gstCents;
-  const gstRate = subtotalCents > 0 ? Math.round((gstCents / subtotalCents) * 100) / 100 : 0.1;
 
   const requiredFound = [clientName, workOrderNumber, streetAddress, postcode].filter(Boolean).length;
-  const confidence = Math.min(1, (requiredFound / 4) * 0.5 + (tasks.length ? 0.3 : 0) + (subtotalCents ? 0.2 : 0));
+  const confidence = Math.min(1, (requiredFound / 4) * 0.5 + (tasks.length ? 0.3 : 0) + (totalCents ? 0.2 : 0));
 
   return {
     fields: {
@@ -219,7 +219,7 @@ export function parseWorkOrder(text: string): WorkOrderDraft {
       postcode,
     },
     tasks,
-    totals: { subtotalCents, gstRate, gstCents, totalCents },
+    totals: { totalCents },
     confidence: Math.round(confidence * 100) / 100,
     parserVersion: PARSER_VERSION,
   };

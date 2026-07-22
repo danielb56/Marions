@@ -37,7 +37,7 @@ export function PdfImportForm() {
           <label htmlFor="file" className="mt-1 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#d9d4c9] bg-[#faf9f6] px-4 py-10 text-center hover:border-[#a46327]">
             <FileUp className="h-6 w-6 text-[#a46327]" />
             <span className="text-sm font-semibold text-[#3a423f]">Choose a PDF to import</span>
-            <span className="text-xs text-[#77817e]">The header, trade scope and totals are read up to the signature line. Policy attachments are ignored.</span>
+            <span className="text-xs text-[#77817e]">The header, trade scope and total cost are read up to the signature line. Policy attachments are ignored.</span>
             <input id="file" name="file" type="file" accept="application/pdf" required className="mt-2 text-sm" />
           </label>
         </div>
