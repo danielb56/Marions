@@ -60,9 +60,9 @@ export function MultiDateCalendar({ name, today, compact = false }: { name: stri
 
   const calendar = <>
     <div className="flex items-center justify-between gap-2">
-      <button type="button" aria-label="Previous month" onClick={() => setMonth((current) => subMonths(current, 1))} className={cn("grid place-items-center rounded-xl border border-[#e1ddd4] text-[#2f666c] hover:bg-[#f8f6f1]", compact ? "h-8 w-8" : "h-10 w-10")}><ChevronLeft className="h-4 w-4" /></button>
+      <button type="button" aria-label="Previous month" onClick={() => setMonth((current) => subMonths(current, 1))} className={cn("grid place-items-center rounded-xl border border-[#e1ddd4] text-[#0077a8] hover:bg-[#f8f6f1]", compact ? "h-8 w-8" : "h-10 w-10")}><ChevronLeft className="h-4 w-4" /></button>
       <div className="text-center"><p className="font-semibold">{format(month, "MMMM yyyy")}</p><p className="text-xs text-[#7a8380]">Select one or more days</p></div>
-      <button type="button" aria-label="Next month" onClick={() => setMonth((current) => addMonths(current, 1))} className={cn("grid place-items-center rounded-xl border border-[#e1ddd4] text-[#2f666c] hover:bg-[#f8f6f1]", compact ? "h-8 w-8" : "h-10 w-10")}><ChevronRight className="h-4 w-4" /></button>
+      <button type="button" aria-label="Next month" onClick={() => setMonth((current) => addMonths(current, 1))} className={cn("grid place-items-center rounded-xl border border-[#e1ddd4] text-[#0077a8] hover:bg-[#f8f6f1]", compact ? "h-8 w-8" : "h-10 w-10")}><ChevronRight className="h-4 w-4" /></button>
     </div>
     <div className="mt-3 grid grid-cols-7 gap-1" aria-hidden="true">{WEEKDAYS.map((day) => <div key={day} className="py-1 text-center text-[10px] font-bold uppercase tracking-wide text-[#7b8582]">{day}</div>)}</div>
     <div className="grid grid-cols-7 gap-1" role="group" aria-label="Schedule dates">
@@ -80,7 +80,7 @@ export function MultiDateCalendar({ name, today, compact = false }: { name: stri
             "relative grid aspect-square place-items-center rounded-xl font-semibold transition",
             compact ? "min-h-8 text-xs" : "min-h-9 text-sm",
             isSameMonth(day, month) ? "text-[#303b38]" : "text-[#a4aaa7]",
-            "hover:bg-[#edf4f2] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#2f666c]",
+            "hover:bg-[#eef7fb] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#0077a8]",
             isToday && "ring-2 ring-inset ring-[#d49a4a]",
             selected && "bg-[#245d63] text-white hover:bg-[#19484e]",
           )}
@@ -107,10 +107,10 @@ export function MultiDateCalendar({ name, today, compact = false }: { name: stri
           aria-expanded={open}
           aria-haspopup="dialog"
           onClick={() => setOpen((current) => !current)}
-          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-[#d9d4c9] bg-white px-3.5 text-left text-[15px] text-[#303b38] shadow-sm outline-none hover:border-[#8aaaa9] focus-visible:border-[#2f666c] focus-visible:ring-2 focus-visible:ring-[#b7d3d3]"
+          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-[#d9d4c9] bg-white px-3.5 text-left text-[15px] text-[#303b38] shadow-sm outline-none hover:border-[#8aaaa9] focus-visible:border-[#0077a8] focus-visible:ring-2 focus-visible:ring-[#b7d3d3]"
         >
           <span className={cn("truncate", selectedDates.length === 0 && "text-[#949c99]")}>{selectionLabel}</span>
-          <CalendarDays className="h-4 w-4 shrink-0 text-[#2f666c]" />
+          <CalendarDays className="h-4 w-4 shrink-0 text-[#0077a8]" />
         </button>
         {open && <div role="dialog" aria-label="Choose schedule dates" className="absolute left-0 top-full z-50 mt-2 w-full rounded-2xl border border-[#d9d4c9] bg-white p-3 shadow-xl">{calendar}</div>}
       </div>

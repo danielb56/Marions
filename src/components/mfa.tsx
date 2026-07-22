@@ -20,7 +20,7 @@ export function MfaEnrol() {
   useEffect(() => {
     void (async () => {
       const supabase = createClient();
-      const { data, error: enrollError } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "Marion manager" });
+      const { data, error: enrollError } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "REME manager" });
       if (enrollError) { setError(enrollError.message); setBusy(false); return; }
       setFactorId(data.id); setQr(data.totp.qr_code); setSecret(data.totp.secret); setBusy(false);
     })();
@@ -61,5 +61,5 @@ export function MfaChallenge() {
     router.replace("/manager"); router.refresh();
   };
 
-  return <div className="space-y-4"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#dcebea] text-[#2f666c]"><KeyRound className="h-6 w-6" /></div><div><Label htmlFor="mfa-code">Authenticator code</Label><Input id="mfa-code" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoFocus autoComplete="one-time-code" placeholder="000000" /></div>{error && <p className="rounded-xl bg-[#f5dfdc] p-3 text-sm text-[#913a31]">{error}</p>}<Button className="w-full" onClick={() => void verify()} disabled={busy || code.length !== 6}>{busy && <LoaderCircle className="h-4 w-4 animate-spin" />}Continue</Button></div>;
+  return <div className="space-y-4"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#e2f1f8] text-[#0077a8]"><KeyRound className="h-6 w-6" /></div><div><Label htmlFor="mfa-code">Authenticator code</Label><Input id="mfa-code" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoFocus autoComplete="one-time-code" placeholder="000000" /></div>{error && <p className="rounded-xl bg-[#f5dfdc] p-3 text-sm text-[#913a31]">{error}</p>}<Button className="w-full" onClick={() => void verify()} disabled={busy || code.length !== 6}>{busy && <LoaderCircle className="h-4 w-4 animate-spin" />}Continue</Button></div>;
 }

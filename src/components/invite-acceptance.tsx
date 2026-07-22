@@ -45,6 +45,6 @@ export function InviteAcceptance() {
     return () => { active = false; };
   }, [router]);
 
-  if (error) return <div role="alert"><p className="text-sm leading-6 text-[#913a31]">{error}</p><a href="/sign-in" className="mt-4 inline-flex min-h-11 items-center font-semibold text-[#2f666c]">Return to sign in</a></div>;
-  return <p role="status" className="flex items-center gap-3 text-sm font-semibold text-[#596461]"><LoaderCircle className="h-5 w-5 animate-spin text-[#2f666c]" />Preparing your secure account setup...</p>;
+  if (error) return <div role="alert"><p className="text-sm leading-6 text-[#913a31]">{error}</p><a href="/sign-in" className="mt-4 inline-flex min-h-11 items-center font-semibold text-[#0077a8]">Return to sign in</a></div>;
+  return <p role="status" className="flex items-center gap-3 text-sm font-semibold text-[#596461]"><LoaderCircle className="h-5 w-5 animate-spin text-[#0077a8]" />Preparing your secure account setup...</p>;
 }
