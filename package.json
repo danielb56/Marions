@@ -44,6 +44,7 @@
     "react-hook-form": "^7.82.0",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.6.0",
+    "unpdf": "^1.6.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
