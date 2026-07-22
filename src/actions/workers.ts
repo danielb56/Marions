@@ -16,7 +16,7 @@ export async function inviteWorker(_: ActionState, formData: FormData): Promise<
     const admin = createAdminClient();
     const { error } = await admin.auth.admin.inviteUserByEmail(email, {
       data: { tenant_id: manager.tenant_id, role: "worker", display_name: displayName, phone },
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback?next=/update-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback?next=/update-password&intent=invite`,
     });
     if (error) return { error: error.message };
   } catch (error) {

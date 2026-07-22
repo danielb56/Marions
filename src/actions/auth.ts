@@ -46,9 +46,18 @@ export async function requestPasswordReset(_: AuthState, formData: FormData): Pr
 
 export async function updatePassword(_: AuthState, formData: FormData): Promise<AuthState> {
   const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+  const intent = formData.get("intent") === "invite" ? "invite" : "recovery";
   if (password.length < 12) return { error: "Use at least 12 characters." };
+  if (password !== confirmPassword) return { error: "The passwords do not match." };
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "This password link is invalid or has expired. Request a new link and try again." };
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: error.message };
+  if (intent === "invite") {
+    await supabase.auth.signOut();
+    redirect("/sign-in?setup=complete");
+  }
   redirect("/");
 }
