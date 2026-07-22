@@ -51,9 +51,10 @@ export async function assignWholeOrder(_: ActionState, formData: FormData): Prom
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("assign_and_schedule_whole_order", { p_work_order_id: workOrderId, p_worker_id: workerId, p_dates: dates, p_preserve_existing: formData.get("preserveExisting") === "on" });
   if (error) return { error: error.message };
-  const result = data as { assignedTasks?: number; scheduledDays?: number } | null;
-  revalidatePath(`/manager/work-orders/${workOrderId}`); revalidatePath("/manager"); revalidatePath("/manager/calendar"); revalidatePath("/worker"); revalidatePath("/worker/upcoming");
-  return { ok: true, message: `${result?.assignedTasks ?? 0} tasks assigned across ${result?.scheduledDays ?? dates.length} day${dates.length === 1 ? "" : "s"}.` };
+  const result = data as { assignedTasks?: number; scheduledTasks?: number; scheduledDays?: number } | null;
+  revalidatePath(`/manager/work-orders/${workOrderId}`); revalidatePath("/manager"); revalidatePath("/manager/calendar"); revalidatePath("/worker"); revalidatePath("/worker/jobs"); revalidatePath("/worker/upcoming");
+  const scheduledDays = result?.scheduledDays ?? dates.length;
+  return { ok: true, message: `${result?.assignedTasks ?? 0} tasks assigned and ${result?.scheduledTasks ?? 0} one-hour blocks scheduled from 8:00am across ${scheduledDays} day${scheduledDays === 1 ? "" : "s"}.` };
 }
 
 export async function assignTask(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -99,6 +100,34 @@ export async function unscheduleEntry(_: ActionState, formData: FormData): Promi
   revalidatePath("/worker");
   revalidatePath("/worker/upcoming");
   return { ok: true, message: "Scheduled date removed and the worker was notified." };
+}
+
+export async function unassignTask(_: ActionState, formData: FormData): Promise<ActionState> {
+  await assertRole("manager");
+  const taskId = Number(formData.get("taskId"));
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!Number.isInteger(taskId) || taskId < 1) return { error: "The task is invalid." };
+  if (reason.length < 2 || reason.length > 500) return { error: "Enter a reason between 2 and 500 characters." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("unassign_task", { p_task_id: taskId, p_reason: reason });
+  if (error) return { error: error.message };
+  const result = data as { workOrderId?: number; unassignedWorkers?: number } | null;
+  if (result?.workOrderId) revalidatePath(`/manager/work-orders/${result.workOrderId}`);
+  revalidatePath("/manager/calendar"); revalidatePath("/manager/work-orders"); revalidatePath("/manager"); revalidatePath("/worker"); revalidatePath("/worker/jobs"); revalidatePath("/worker/upcoming");
+  return { ok: true, message: `Task unassigned from ${result?.unassignedWorkers ?? 0} worker${result?.unassignedWorkers === 1 ? "" : "s"}.` };
+}
+
+export async function unscheduleAllUpcoming(_: ActionState, formData: FormData): Promise<ActionState> {
+  await assertRole("manager");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 2 || reason.length > 500) return { error: "Enter a reason between 2 and 500 characters." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("unschedule_all_upcoming", { p_reason: reason });
+  if (error) return { error: error.message };
+  const result = data as { removedEntries?: number; affectedWorkers?: number } | null;
+  revalidatePath("/manager/calendar"); revalidatePath("/manager/work-orders"); revalidatePath("/manager"); revalidatePath("/worker"); revalidatePath("/worker/jobs"); revalidatePath("/worker/upcoming");
+  const removed = result?.removedEntries ?? 0;
+  return { ok: true, message: removed > 0 ? `${removed} upcoming schedule ${removed === 1 ? "entry" : "entries"} removed across ${result?.affectedWorkers ?? 0} worker${result?.affectedWorkers === 1 ? "" : "s"}.` : "There were no upcoming schedules to remove." };
 }
 
 export async function cancelWorkOrder(formData: FormData) {
