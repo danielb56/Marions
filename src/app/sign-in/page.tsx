@@ -6,7 +6,8 @@ import { getCurrentProfile } from "@/lib/auth";
 
 export const metadata = { title: "Sign in" };
 
-export default async function SignInPage() {
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ setup?: string; error?: string }> }) {
+  const query = await searchParams;
   const profile = await getCurrentProfile();
   if (profile) redirect(profile.role === "manager" ? "/manager" : "/worker");
   return <main className="grid min-h-screen lg:grid-cols-[1.05fr_.95fr]">
@@ -15,6 +16,6 @@ export default async function SignInPage() {
       <div className="relative z-10 max-w-xl pb-12"><p className="mb-5 text-sm font-bold uppercase tracking-[.2em] text-[#a9cccb]">Work stays moving</p><h1 className="text-5xl font-semibold leading-[1.08] tracking-[-.04em]">From work order to signed off, without the phone chase.</h1><p className="mt-6 max-w-lg text-lg leading-8 text-[#d7e6e5]">Plan the day, brief the crew, capture proof and approve completed work in one secure place.</p></div>
       <div className="flex items-center gap-3 text-sm text-[#d7e6e5]"><ShieldCheck className="h-5 w-5 text-[#efbd69]" /> Pricing is protected from worker accounts at every layer.</div>
     </section>
-    <section className="flex min-h-screen items-center justify-center bg-[#f4f2ec] px-5 py-10 sm:px-10"><div className="w-full max-w-md"><div className="mb-10 lg:hidden"><Logo href="/sign-in" /></div><div className="rounded-3xl border border-[#dfdbd1] bg-white p-7 shadow-[0_20px_70px_rgba(36,49,47,.08)] sm:p-9"><p className="text-sm font-bold text-[#b4772f]">WELCOME BACK</p><h2 className="mt-2 text-3xl font-semibold tracking-[-.035em] text-[#23312f]">Sign in to Marion</h2><p className="mb-7 mt-2 text-[#697370]">Use the account your manager created for you.</p><AuthForm /></div><p className="mt-6 text-center text-xs leading-5 text-[#7c8582]">No public sign-up. Accounts are created by an authorised manager.</p></div></section>
+    <section className="flex min-h-screen items-center justify-center bg-[#f4f2ec] px-5 py-10 sm:px-10"><div className="w-full max-w-md"><div className="mb-10 lg:hidden"><Logo href="/sign-in" /></div>{query.setup === "complete" && <p role="status" className="mb-4 rounded-2xl bg-[#e1eee8] p-4 text-sm font-semibold text-[#2f6249]">Your password is ready. Sign in with your new password.</p>}{query.error === "password-link" && <p role="alert" className="mb-4 rounded-2xl bg-[#f5dfdc] p-4 text-sm text-[#913a31]">That setup link is invalid or has expired. Ask your manager for a new invitation.</p>}<div className="rounded-3xl border border-[#dfdbd1] bg-white p-7 shadow-[0_20px_70px_rgba(36,49,47,.08)] sm:p-9"><p className="text-sm font-bold text-[#b4772f]">WELCOME BACK</p><h2 className="mt-2 text-3xl font-semibold tracking-[-.035em] text-[#23312f]">Sign in to Marion</h2><p className="mb-7 mt-2 text-[#697370]">Use the account your manager created for you.</p><AuthForm /></div><p className="mt-6 text-center text-xs leading-5 text-[#7c8582]">No public sign-up. Accounts are created by an authorised manager.</p></div></section>
   </main>;
 }

@@ -39,7 +39,7 @@ export async function inviteTeamMember(_: ActionState, formData: FormData): Prom
         display_name: displayName,
         phone,
       },
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback?next=/update-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback?next=/update-password&intent=invite`,
     });
     if (error) return { error: error.message };
   } catch (error) {
