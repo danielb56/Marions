@@ -17,6 +17,17 @@ describe("multi-day scheduling UI", () => {
     expect(calendar).toContain('aria-pressed={selected}');
     expect(calendar).toContain('name={name}');
   });
+
+  it("keeps the task calendar compact and hidden until requested", () => {
+    const form = source("src/components/assignment-form.tsx");
+    const calendar = source("src/components/multi-date-calendar.tsx");
+    expect(form).toContain('<MultiDateCalendar name="dates" today={today} compact />');
+    expect(calendar).toContain('aria-expanded={open}');
+    expect(calendar).toContain('role="dialog"');
+    expect(calendar).toContain('event.key === "Escape"');
+    expect(calendar).toContain('document.addEventListener("pointerdown", closeOutside)');
+    expect(calendar).toContain('onClick={() => setOpen(false)}');
+  });
 });
 
 describe("whole-order calendar scheduling", () => {
