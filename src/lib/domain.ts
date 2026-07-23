@@ -63,6 +63,8 @@ export const taskInputSchema = z.object({
   unit: z.enum(UNITS),
 });
 
+export const taskDetailsInputSchema = taskInputSchema.omit({ trade: true });
+
 export const workOrderInputSchema = z.object({
   clientId: z.coerce.number().int().positive().optional(),
   clientName: z.string().trim().min(2).max(200),

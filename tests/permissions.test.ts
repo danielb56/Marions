@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 const matrix = [
   ["view_pricing", true, false], ["edit_pricing", true, false], ["view_original_pdf", true, false],
   ["create_work_order", true, false], ["assign_task", true, false], ["schedule_task", true, false],
+  ["edit_task_details", true, false],
   ["start_own_task", true, true], ["submit_own_completion", false, true], ["approve_completion", true, false],
   ["view_full_audit", true, false],
 ] as const;
