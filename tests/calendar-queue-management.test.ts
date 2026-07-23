@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const source = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 const migration = source("supabase/migrations/0016_calendar_queue_and_auto_schedule.sql");
+const bulkUnassignMigration = source("supabase/migrations/0017_bulk_unassign_unscheduled_tasks.sql");
 
 describe("whole-order automatic task scheduling", () => {
   it("keeps task order and balances work across the selected dates", () => {
@@ -37,7 +38,7 @@ describe("calendar assignment queues", () => {
     expect(page).toContain("Assigned but unscheduled");
     expect(page).toContain("Unassigned jobs");
     expect(page).toContain("<UnassignTaskForm taskId={task.id} />");
-    expect(page).toContain("<UnscheduleAllControl />");
+    expect(page).toContain("<UnassignAllControl />");
     expect(page).toContain('assignment.status !== "reassigned"');
   });
 
@@ -64,11 +65,25 @@ describe("calendar assignment queues", () => {
     expect(bulk).toContain("schedule_entry.bulk_unscheduled");
   });
 
-  it("exposes both manager actions through guarded server actions", () => {
+  it("bulk-unassigns only the same jobs shown in the assigned-but-unscheduled queue", () => {
+    expect(bulkUnassignMigration).toContain("if not public.is_manager()");
+    expect(bulkUnassignMigration).toContain("t.tenant_id = tenant_key");
+    expect(bulkUnassignMigration).toContain("t.status in ('draft','ready','assigned','scheduled')");
+    expect(bulkUnassignMigration).toContain("a.status <> 'reassigned'");
+    expect(bulkUnassignMigration).toContain("se.planned_date >= current_date");
+    expect(bulkUnassignMigration).toContain("se.task_id = t.id or se.work_order_id = t.work_order_id");
+    expect(bulkUnassignMigration).toContain("status = 'reassigned'");
+    expect(bulkUnassignMigration).toContain("set status = 'ready'");
+    expect(bulkUnassignMigration).toContain("task.bulk_unassigned");
+    expect(bulkUnassignMigration).toContain("select distinct");
+    expect(bulkUnassignMigration).toContain("affectedWorkers");
+  });
+
+  it("exposes both unassignment operations through guarded server actions", () => {
     const actions = source("src/actions/work-orders.ts");
     expect(actions).toContain("export async function unassignTask");
     expect(actions).toContain('supabase.rpc("unassign_task"');
-    expect(actions).toContain("export async function unscheduleAllUpcoming");
-    expect(actions).toContain('supabase.rpc("unschedule_all_upcoming"');
+    expect(actions).toContain("export async function unassignAllUnscheduled");
+    expect(actions).toContain('supabase.rpc("unassign_all_unscheduled_tasks"');
   });
 });
