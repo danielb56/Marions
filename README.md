@@ -1,4 +1,4 @@
-# Marion Work Orders
+# REME Painting Group Work Orders
 
 A secure work-order management MVP for Australian construction maintenance and trade subcontracting teams. Managers capture scope and pricing, assign and schedule work, then review field evidence. Workers receive only their own operational tasks, with no pricing fields, financial documents or full audit values.
 
@@ -37,7 +37,7 @@ MANAGER_PASSWORD="$MANAGER_PASSWORD" pnpm seed:manager --email manager@example.c
 unset MANAGER_PASSWORD
 ```
 
-Sign in with that account. Because manager MFA is required by default, Marion immediately walks the manager through TOTP authenticator enrolment. Optionally load the sample Bentino-style order:
+Sign in with that account. Because manager MFA is required by default, REME Work Orders immediately walks the manager through TOTP authenticator enrolment. Optionally load the sample Bentino-style order:
 
 ```bash
 pnpm seed:sample
