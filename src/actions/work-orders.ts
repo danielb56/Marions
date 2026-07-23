@@ -117,6 +117,21 @@ export async function unassignTask(_: ActionState, formData: FormData): Promise<
   return { ok: true, message: `Task unassigned from ${result?.unassignedWorkers ?? 0} worker${result?.unassignedWorkers === 1 ? "" : "s"}.` };
 }
 
+export async function unassignAllUnscheduled(_: ActionState, formData: FormData): Promise<ActionState> {
+  await assertRole("manager");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 2 || reason.length > 500) return { error: "Enter a reason between 2 and 500 characters." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("unassign_all_unscheduled_tasks", { p_reason: reason });
+  if (error) return { error: error.message };
+  const result = data as { unassignedTasks?: number; affectedWorkers?: number; removedAssignments?: number } | null;
+  revalidatePath("/manager/calendar"); revalidatePath("/manager/work-orders"); revalidatePath("/manager"); revalidatePath("/worker"); revalidatePath("/worker/jobs"); revalidatePath("/worker/upcoming");
+  const unassigned = result?.unassignedTasks ?? 0;
+  return { ok: true, message: unassigned > 0 ? `${unassigned} ${unassigned === 1 ? "job" : "jobs"} moved to Unassigned jobs across ${result?.affectedWorkers ?? 0} worker${result?.affectedWorkers === 1 ? "" : "s"}.` : "There were no assigned, unscheduled jobs to unassign." };
+}
+
+// Retained for compatibility with older clients. The calendar queue now uses
+// unassignAllUnscheduled because its rows have no upcoming schedules to remove.
 export async function unscheduleAllUpcoming(_: ActionState, formData: FormData): Promise<ActionState> {
   await assertRole("manager");
   const reason = String(formData.get("reason") ?? "").trim();
