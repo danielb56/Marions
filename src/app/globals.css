@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f2ec;
-  --foreground: #24312f;
+  --background: #f3f6f9;
+  --foreground: #173047;
+  --reme-navy: #003f70;
+  --reme-blue: #007bb6;
+  --reme-orange: #f58220;
 }
 
 @theme inline {
@@ -22,13 +25,13 @@ body {
 }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button, select { cursor: pointer; }
-::selection { background: #c4dedc; color: #173f45; }
+::selection { background: #ccecf7; color: #003f70; }
 
 .noise-bg {
-  background-color: #173f45;
+  background-color: #003f70;
   background-image:
-    radial-gradient(circle at 12% 18%, rgba(225, 172, 91, .2), transparent 28%),
-    radial-gradient(circle at 85% 80%, rgba(89, 146, 148, .32), transparent 32%);
+    radial-gradient(circle at 14% 14%, rgba(245, 130, 32, .34), transparent 29%),
+    radial-gradient(circle at 88% 82%, rgba(0, 150, 205, .42), transparent 34%);
 }
 
 .scrollbar-thin { scrollbar-width: thin; scrollbar-color: #c6c1b6 transparent; }

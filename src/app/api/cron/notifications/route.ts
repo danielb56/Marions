@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { brandNotificationBody } from "@/lib/brand";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getServerEnv } from "@/lib/env";
 import { logger } from "@/lib/redact";
@@ -21,14 +22,15 @@ export async function POST(request: Request) {
     const recipient = item.recipient as unknown as { email: string; phone: string | null } | null;
     try {
       let externalId: string | null = null;
+      const body = brandNotificationBody(item.body_redacted);
       if (item.channel === "email") {
         if (!env.RESEND_API_KEY || !env.RESEND_FROM || !recipient?.email) throw new Error("Email provider is not configured");
-        const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: env.RESEND_FROM, to: [recipient.email], subject: item.subject, text: item.body_redacted }) });
+        const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: env.RESEND_FROM, to: [recipient.email], subject: item.subject, text: body }) });
         if (!response.ok) throw new Error(`Email provider returned ${response.status}`);
         externalId = (await response.json() as { id?: string }).id ?? null;
       } else if (item.channel === "sms") {
         if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM || !recipient?.phone) throw new Error("SMS provider is not configured");
-        const form = new URLSearchParams({ To: recipient.phone, From: env.TWILIO_FROM, Body: item.body_redacted });
+        const form = new URLSearchParams({ To: recipient.phone, From: env.TWILIO_FROM, Body: body });
         const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, { method: "POST", headers: { Authorization: `Basic ${Buffer.from(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" }, body: form });
         if (!response.ok) throw new Error(`SMS provider returned ${response.status}`);
         externalId = (await response.json() as { sid?: string }).sid ?? null;

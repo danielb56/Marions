@@ -1,5 +1,5 @@
-const STATIC_CACHE = "marion-static-v1";
-const WORKER_CACHE = "marion-worker-operational-v1";
+const STATIC_CACHE = "reme-static-v1";
+const WORKER_CACHE = "reme-worker-operational-v1";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(Promise.all([
@@ -14,7 +14,7 @@ self.addEventListener("fetch", (event) => {
     event.waitUntil(caches.delete(WORKER_CACHE));
     return;
   }
-  if (url.pathname.startsWith("/_next/static/") || url.pathname === "/manifest.webmanifest" || url.pathname === "/favicon.ico") {
+  if (url.pathname.startsWith("/_next/static/") || url.pathname === "/manifest.webmanifest" || url.pathname === "/reme-painting-group-logo.jpg") {
     event.respondWith(caches.open(STATIC_CACHE).then(async (cache) => {
       const cached = await cache.match(event.request);
       if (cached) return cached;
@@ -34,7 +34,7 @@ self.addEventListener("fetch", (event) => {
       ]);
       if (response.ok) {
         const body = await response.clone().arrayBuffer();
-        await cache.put(event.request, new Response(body, { status: response.status, headers: { "Content-Type": response.headers.get("Content-Type") || "text/html; charset=utf-8", "X-Marion-Offline": "operational-only" } }));
+        await cache.put(event.request, new Response(body, { status: response.status, headers: { "Content-Type": response.headers.get("Content-Type") || "text/html; charset=utf-8", "X-REME-Offline": "operational-only" } }));
       }
       return response;
     } catch {

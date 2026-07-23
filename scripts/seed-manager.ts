@@ -7,7 +7,7 @@ async function main() {
   const email = args.get("email")?.toLowerCase();
   const password = process.env.MANAGER_PASSWORD;
   const displayName = args.get("name") ?? "Manager";
-  const tenantName = args.get("tenant") ?? "Marion Trades";
+  const tenantName = args.get("tenant") ?? "REME Painting Group Pty Ltd";
   if (!email || !password || password.length < 12) {
     console.error("Set MANAGER_PASSWORD to at least 12 characters, then run: pnpm seed:manager --email manager@example.com --name 'Manager Name' --tenant 'Company Name'");
     process.exit(1);
