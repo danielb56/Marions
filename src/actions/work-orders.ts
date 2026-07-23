@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { assertRole } from "@/lib/auth";
-import { parseScheduleDates, workOrderInputSchema } from "@/lib/domain";
+import { parseScheduleDates, taskDetailsInputSchema, workOrderInputSchema } from "@/lib/domain";
 import { logger } from "@/lib/redact";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/actions/types";
@@ -39,6 +39,36 @@ export async function createWorkOrder(_: ActionState, formData: FormData): Promi
   }
   revalidatePath("/manager"); revalidatePath("/manager/work-orders");
   redirect(`/manager/work-orders/${data}`);
+}
+
+export async function updateTaskDetails(_: ActionState, formData: FormData): Promise<ActionState> {
+  await assertRole("manager");
+  const taskId = Number(formData.get("taskId"));
+  if (!Number.isInteger(taskId) || taskId < 1) return { error: "The task is invalid." };
+  const parsed = taskDetailsInputSchema.safeParse({
+    description: formData.get("description"),
+    area: formData.get("area"),
+    quantity: formData.get("quantity"),
+    unit: formData.get("unit"),
+  });
+  if (!parsed.success) return { error: "Check the task details and try again.", fieldErrors: z.flattenError(parsed.error).fieldErrors };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("update_task_details", {
+    p_task_id: taskId,
+    p_description: parsed.data.description,
+    p_quantity: parsed.data.quantity,
+    p_unit: parsed.data.unit,
+    p_area_label: parsed.data.area || null,
+  });
+  if (error) {
+    if (error.message.includes("Completed or cancelled")) return { error: "Reopen completed work before editing it. Cancelled tasks cannot be edited." };
+    logger.error("task.update_failed", error);
+    return { error: "The task could not be updated." };
+  }
+  const result = data as { changed?: boolean; workOrderId?: number; notifiedWorkers?: number } | null;
+  if (result?.workOrderId) revalidatePath(`/manager/work-orders/${result.workOrderId}`);
+  revalidatePath("/manager/work-orders"); revalidatePath("/manager/calendar"); revalidatePath("/manager"); revalidatePath("/worker"); revalidatePath("/worker/jobs"); revalidatePath(`/worker/tasks/${taskId}`);
+  return { ok: true, message: result?.changed ? `Task updated${result.notifiedWorkers ? ` and ${result.notifiedWorkers} assigned worker${result.notifiedWorkers === 1 ? " was" : "s were"} notified` : ""}.` : "No task details changed." };
 }
 
 export async function assignWholeOrder(_: ActionState, formData: FormData): Promise<ActionState> {
