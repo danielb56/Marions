@@ -193,12 +193,33 @@ export const FORBIDDEN_WORKER_KEYS = [
   "work_order_totals",
 ] as const;
 
-export function assertWorkerSafe(value: unknown) {
-  const serialised = JSON.stringify(value);
-  for (const key of FORBIDDEN_WORKER_KEYS) {
-    if (new RegExp(`"${key}"\\s*:`).test(serialised)) {
-      throw new Error("Unsafe worker response blocked");
+const FORBIDDEN_KEY_SET = new Set<string>(FORBIDDEN_WORKER_KEYS);
+
+// Walks actual object keys rather than pattern-matching serialised JSON. The
+// regex form also matched inside string *values*, so a task description that
+// happened to contain `"subtotal":` would have taken down a worker's page.
+function findForbiddenKey(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findForbiddenKey(item);
+      if (found) return found;
     }
+    return null;
   }
+  if (!value || typeof value !== "object") return null;
+  for (const [key, item] of Object.entries(value)) {
+    if (FORBIDDEN_KEY_SET.has(key)) return key;
+    const found = findForbiddenKey(item);
+    if (found) return found;
+  }
+  return null;
+}
+
+// Deliberately fails closed: a suspected pricing leak should break the page
+// rather than render. The offending key is named so the cause is visible in the
+// server log instead of leaving a bare assertion to diagnose.
+export function assertWorkerSafe<T>(value: T): T {
+  const offending = findForbiddenKey(value);
+  if (offending) throw new Error(`Unsafe worker response blocked: ${offending}`);
   return value;
 }

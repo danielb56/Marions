@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { assertRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/redact";
+import { actionError } from "@/actions/errors";
 import type { ActionState } from "@/actions/types";
 
 export async function inviteWorker(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -21,8 +23,12 @@ export async function inviteWorker(_: ActionState, formData: FormData): Promise<
       data: { tenant_id: manager.tenant_id, role: "worker", display_name: displayName, phone },
       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback?next=/update-password&intent=invite`,
     });
-    if (error) return { error: error.message };
+    if (error) {
+      logger.error("worker.invite_rejected", error);
+      return { error: error.message };
+    }
   } catch (error) {
+    logger.error("worker.invite_failed", error);
     return { error: error instanceof Error ? error.message : "The invitation could not be sent." };
   }
   revalidatePath("/manager/workers");
@@ -41,7 +47,7 @@ export async function disableWorker(_: ActionState, formData: FormData): Promise
     .eq("id", userId)
     .eq("tenant_id", manager.tenant_id)
     .eq("role", "worker");
-  if (error) return { error: "The worker could not be disabled." };
+  if (error) return actionError("worker.disable", error, "The worker could not be disabled.");
   const admin = createAdminClient();
   await admin.auth.admin.updateUserById(userId, { ban_duration: "876000h" });
   revalidatePath("/manager/workers");

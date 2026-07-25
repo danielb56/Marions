@@ -7,6 +7,7 @@ import { assertRole } from "@/lib/auth";
 import { parseScheduleDates, taskDetailsInputSchema, workOrderInputSchema } from "@/lib/domain";
 import { logger } from "@/lib/redact";
 import { createClient } from "@/lib/supabase/server";
+import { actionError, throwActionError } from "@/actions/errors";
 import type { ActionState } from "@/actions/types";
 
 export async function createWorkOrder(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -141,7 +142,7 @@ export async function assignWholeOrder(_: ActionState, formData: FormData): Prom
     p_dates: dates,
     p_preserve_existing: formData.get("preserveExisting") === "on",
   });
-  if (error) return { error: error.message };
+  if (error) return actionError("work_order.assign_whole", error);
   const result = data as {
     assignedTasks?: number;
     scheduledTasks?: number;
@@ -173,7 +174,7 @@ export async function assignTask(_: ActionState, formData: FormData): Promise<Ac
     p_worker_ids: workerIds,
     p_lead_worker_id: leadWorkerId,
   });
-  if (error) return { error: error.message };
+  if (error) return actionError("task.assign", error);
   revalidatePath("/manager/work-orders");
   revalidatePath("/manager");
   return { ok: true, message: "Task assignment updated." };
@@ -201,7 +202,7 @@ export async function scheduleTask(_: ActionState, formData: FormData): Promise<
     p_start_time: String(formData.get("startTime") ?? "") || null,
     p_estimated_hours: Number(formData.get("estimatedHours")) || null,
   });
-  if (error) return { error: error.message };
+  if (error) return actionError("task.schedule", error);
   revalidatePath(`/manager/work-orders/${task.work_order_id}`);
   revalidatePath("/manager/calendar");
   revalidatePath("/manager/work-orders");
@@ -223,7 +224,7 @@ export async function unscheduleEntry(_: ActionState, formData: FormData): Promi
     p_schedule_entry_id: scheduleEntryId,
     p_reason: reason,
   });
-  if (error) return { error: error.message };
+  if (error) return actionError("schedule_entry.unschedule", error);
   revalidatePath("/manager/calendar");
   revalidatePath("/manager/work-orders");
   revalidatePath("/worker");
@@ -243,7 +244,7 @@ export async function unassignTask(_: ActionState, formData: FormData): Promise<
     p_task_id: taskId,
     p_reason: reason,
   });
-  if (error) return { error: error.message };
+  if (error) return actionError("task.unassign", error);
   const result = data as { workOrderId?: number; unassignedWorkers?: number } | null;
   if (result?.workOrderId) revalidatePath(`/manager/work-orders/${result.workOrderId}`);
   revalidatePath("/manager/calendar");
@@ -270,7 +271,7 @@ export async function unassignAllUnscheduled(
   const { data, error } = await supabase.rpc("unassign_all_unscheduled_tasks", {
     p_reason: reason,
   });
-  if (error) return { error: error.message };
+  if (error) return actionError("task.bulk_unassign", error);
   const result = data as {
     unassignedTasks?: number;
     affectedWorkers?: number;
@@ -304,7 +305,7 @@ export async function unscheduleAllUpcoming(
     return { error: "Enter a reason between 2 and 500 characters." };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("unschedule_all_upcoming", { p_reason: reason });
-  if (error) return { error: error.message };
+  if (error) return actionError("schedule_entry.unschedule_all", error);
   const result = data as { removedEntries?: number; affectedWorkers?: number } | null;
   revalidatePath("/manager/calendar");
   revalidatePath("/manager/work-orders");
@@ -349,24 +350,37 @@ export async function cancelWorkOrder(formData: FormData) {
 }
 
 export async function reopenTask(formData: FormData) {
-  await assertRole("manager");
+  // One authorisation check. This previously called assertRole three times, so a
+  // single click cost three round-trips for the same answer.
+  const profile = await assertRole("manager");
   const taskId = Number(formData.get("taskId"));
   const reason = String(formData.get("reason") ?? "").trim();
-  if (!taskId || !reason) throw new Error("A reason is required");
+  if (!Number.isInteger(taskId) || taskId < 1) throw new Error("The task is invalid");
+  if (reason.length < 2 || reason.length > 500) {
+    throw new Error("Enter a reason between 2 and 500 characters");
+  }
   const supabase = await createClient();
   const { error } = await supabase
     .from("task")
     .update({ status: "changes_requested", completed_at: null, revised_since_viewed: true })
-    .eq("id", taskId);
-  if (error) throw new Error("Could not reopen task");
-  await supabase.from("note").insert({
-    tenant_id: (await assertRole("manager")).tenant_id,
+    .eq("id", taskId)
+    .eq("tenant_id", profile.tenant_id);
+  if (error) throwActionError("task.reopen", error, "Could not reopen task");
+
+  // The reason is the worker's only explanation for the reopen, so a failure here
+  // is worth recording even though it should not fail the action.
+  const { error: noteError } = await supabase.from("note").insert({
+    tenant_id: profile.tenant_id,
     parent_type: "task",
     parent_id: taskId,
-    author_user_id: (await assertRole("manager")).id,
+    author_user_id: profile.id,
     body: reason,
     visibility: "worker_visible",
     note_type: "problem",
   });
+  if (noteError) logger.error("task.reopen_note_failed", noteError);
+
   revalidatePath("/manager/work-orders");
+  revalidatePath("/manager/review");
+  revalidatePath(`/worker/tasks/${taskId}`);
 }
