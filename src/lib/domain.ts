@@ -32,6 +32,13 @@ export const WORK_ORDER_STATUSES = [
 export type WorkOrderStatus = (typeof WORK_ORDER_STATUSES)[number];
 
 export const UNITS = ["ea", "m2", "lm", "m3", "hr"] as const;
+
+// Australian states and territories. SA, WA and NT are two characters, so this
+// must never be validated as a fixed-length string — the form offers all eight
+// and every one of them has to survive validation.
+export const AU_STATES = ["NSW", "ACT", "VIC", "QLD", "SA", "WA", "TAS", "NT"] as const;
+export type AuState = (typeof AU_STATES)[number];
+
 export const TRADE_CATEGORIES = [
   "Carpentry",
   "Cleaning",
@@ -72,8 +79,14 @@ export const workOrderInputSchema = z.object({
   customerPhone: z.string().trim().max(40).optional().default(""),
   streetAddress: z.string().trim().min(3).max(300),
   suburb: z.string().trim().min(2).max(100),
-  state: z.string().trim().length(3).default("NSW"),
-  postcode: z.string().trim().regex(/^\d{4}$/, "Enter a four-digit postcode"),
+  state: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() ? value.trim().toUpperCase() : "NSW"),
+    z.enum(AU_STATES),
+  ),
+  postcode: z
+    .string()
+    .trim()
+    .regex(/^\d{4}$/, "Enter a four-digit postcode"),
   siteContactName: z.string().trim().max(200).optional().default(""),
   siteContactPhone: z.string().trim().max(40).optional().default(""),
   workOrderNumber: z.string().trim().min(1).max(100),
@@ -87,7 +100,7 @@ export const workOrderInputSchema = z.object({
   notes: z.string().max(10000).optional().default(""),
   additionalInstructions: z.string().max(10000).optional().default(""),
   totalCents: z.preprocess(
-    (value) => value === "" || value == null ? undefined : value,
+    (value) => (value === "" || value == null ? undefined : value),
     z.coerce.number().int().min(0, "Enter the work order total"),
   ),
   duplicateReason: z.string().trim().max(500).optional().default(""),
@@ -105,7 +118,10 @@ export function parseTaskLines(input: string) {
     const line = originalLine.trim();
     if (!line || /^material$/i.test(line)) continue;
     if (headerNames.has(line.replace(/\s+material$/i, "").toLowerCase())) {
-      trade = TRADE_CATEGORIES.find((name) => name.toLowerCase() === line.replace(/\s+material$/i, "").toLowerCase()) ?? trade;
+      trade =
+        TRADE_CATEGORIES.find(
+          (name) => name.toLowerCase() === line.replace(/\s+material$/i, "").toLowerCase(),
+        ) ?? trade;
       continue;
     }
     const match = line.match(/^(.*?)\s+(\d+(?:\.\d+)?)\s*\/\s*(ea|m2|lm|m3|hr)\s*$/i);
@@ -122,14 +138,28 @@ export function parseTaskLines(input: string) {
 }
 
 export function parseScheduleDates(input: string, maximum = 62): string[] | null {
-  const values = [...new Set(input.split(",").map((value) => value.trim()).filter(Boolean))].sort();
+  const values = [
+    ...new Set(
+      input
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ].sort();
   if (!values.length || values.length > maximum) return null;
   for (const value of values) {
     const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!match) return null;
-    const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+    const year = Number(match[1]),
+      month = Number(match[2]),
+      day = Number(match[3]);
     const parsed = new Date(Date.UTC(year, month - 1, day));
-    if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) return null;
+    if (
+      parsed.getUTCFullYear() !== year ||
+      parsed.getUTCMonth() !== month - 1 ||
+      parsed.getUTCDate() !== day
+    )
+      return null;
   }
   return values;
 }
@@ -143,7 +173,8 @@ export function deriveWorkOrderStatus(statuses: TaskStatus[]): WorkOrderStatus {
   if (active.includes("completion_submitted")) return "in_progress";
   if (active.includes("in_progress")) return "in_progress";
   if (active.every((status) => ["scheduled", "completed"].includes(status))) return "scheduled";
-  if (active.some((status) => ["assigned", "scheduled", "completed"].includes(status))) return "assigned";
+  if (active.some((status) => ["assigned", "scheduled", "completed"].includes(status)))
+    return "assigned";
   if (active.every((status) => status === "ready")) return "ready";
   return "draft";
 }

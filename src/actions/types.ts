@@ -1,1 +1,6 @@
-export type ActionState = { ok?: boolean; error?: string; message?: string; fieldErrors?: Record<string, string[]> };
+export type ActionState = {
+  ok?: boolean;
+  error?: string;
+  message?: string;
+  fieldErrors?: Record<string, string[]>;
+};

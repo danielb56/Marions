@@ -3,9 +3,17 @@ import { titleCase } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 const tone: Record<TaskStatus | WorkOrderStatus, Parameters<typeof Badge>[0]["tone"]> = {
-  draft: "neutral", ready: "blue", assigned: "blue", scheduled: "teal", in_progress: "amber",
-  completion_submitted: "purple", changes_requested: "amber", blocked: "red", completed: "green",
-  signed_off: "green", cancelled: "neutral",
+  draft: "neutral",
+  ready: "blue",
+  assigned: "blue",
+  scheduled: "teal",
+  in_progress: "amber",
+  completion_submitted: "purple",
+  changes_requested: "amber",
+  blocked: "red",
+  completed: "green",
+  signed_off: "green",
+  cancelled: "neutral",
 };
 
 export function StatusBadge({ status }: { status: TaskStatus | WorkOrderStatus }) {

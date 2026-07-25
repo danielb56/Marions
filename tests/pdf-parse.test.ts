@@ -80,7 +80,12 @@ describe("work-order PDF parser - header", () => {
   it("reads the customer and splits the site address", () => {
     expect(draft.fields.customerName).toBe("FRANCESCO AMATO");
     expect(draft.fields.customerPhone).toBe("0409735370");
-    expect(draft.fields).toMatchObject({ streetAddress: "4 IRWAN ST", suburb: "Saratoga", state: "NSW", postcode: "2251" });
+    expect(draft.fields).toMatchObject({
+      streetAddress: "4 IRWAN ST",
+      suburb: "Saratoga",
+      state: "NSW",
+      postcode: "2251",
+    });
   });
 });
 
@@ -88,8 +93,19 @@ describe("work-order PDF parser - scope", () => {
   const draft = parseWorkOrder(SAMPLE);
   it("groups every line item under its trade and area", () => {
     expect(draft.tasks).toHaveLength(15);
-    expect(draft.tasks[0]).toMatchObject({ trade: "Carpentry", area: "General Works", description: "Supply & Install Temporary Containment Screens", quantity: 6, unit: "m2" });
-    expect(draft.tasks[1]).toMatchObject({ trade: "Carpentry", area: "Lounge", quantity: 3, unit: "lm" });
+    expect(draft.tasks[0]).toMatchObject({
+      trade: "Carpentry",
+      area: "General Works",
+      description: "Supply & Install Temporary Containment Screens",
+      quantity: 6,
+      unit: "m2",
+    });
+    expect(draft.tasks[1]).toMatchObject({
+      trade: "Carpentry",
+      area: "Lounge",
+      quantity: 3,
+      unit: "lm",
+    });
     expect(draft.tasks.at(-1)).toMatchObject({ trade: "Waste Removal", quantity: 2, unit: "ea" });
   });
   it("re-joins a wrapped multi-line description", () => {
@@ -116,8 +132,16 @@ describe("work-order PDF parser - total cost", () => {
 
 describe("scope-end boundary", () => {
   it("stops at the totals/signature/policy markers", () => {
-    expect(isScopeEndLine("Our Anti-Slavery Policy &The General Insurance Code of Practice (GICOP) follow this work order for your reference.")).toBe(true);
-    expect(isScopeEndLine("I ____ (name) from REME PAINTING GROUP PTY LTD have read and understood the scope of")).toBe(true);
+    expect(
+      isScopeEndLine(
+        "Our Anti-Slavery Policy &The General Insurance Code of Practice (GICOP) follow this work order for your reference.",
+      ),
+    ).toBe(true);
+    expect(
+      isScopeEndLine(
+        "I ____ (name) from REME PAINTING GROUP PTY LTD have read and understood the scope of",
+      ),
+    ).toBe(true);
     expect(isScopeEndLine("Anti Slavery Policy")).toBe(true);
   });
   it("does not stop on ordinary scope lines", () => {

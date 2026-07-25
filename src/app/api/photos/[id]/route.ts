@@ -8,8 +8,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!profile) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase.from("completion_photo").select("storage_key,thumbnail_key").eq("id", Number(id)).single();
+  const { data } = await supabase
+    .from("completion_photo")
+    .select("storage_key,thumbnail_key")
+    .eq("id", Number(id))
+    .single();
   if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const key = request.nextUrl.searchParams.has("thumbnail") && data.thumbnail_key ? data.thumbnail_key : data.storage_key;
+  const key =
+    request.nextUrl.searchParams.has("thumbnail") && data.thumbnail_key
+      ? data.thumbnail_key
+      : data.storage_key;
   return NextResponse.redirect(await signDownload(key, 120), 302);
 }

@@ -31,7 +31,11 @@ export async function requireRole(role: AppRole, options: { skipMfa?: boolean } 
   if (profile.role !== role) redirect(profile.role === "manager" ? "/manager" : "/worker");
   if (role === "manager" && !options.skipMfa) {
     const supabase = await createClient();
-    const { data: tenant } = await supabase.from("tenant").select("mfa_required_for_managers").eq("id", profile.tenant_id).single();
+    const { data: tenant } = await supabase
+      .from("tenant")
+      .select("mfa_required_for_managers")
+      .eq("id", profile.tenant_id)
+      .single();
     if (tenant?.mfa_required_for_managers && !profile.mfa_enrolled) redirect("/security/mfa-enrol");
     if (profile.mfa_enrolled) {
       const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -46,11 +50,16 @@ export async function assertRole(role: AppRole) {
   if (!profile || profile.role !== role) throw new Error("Forbidden");
   if (role === "manager") {
     const supabase = await createClient();
-    const { data: tenant } = await supabase.from("tenant").select("mfa_required_for_managers").eq("id", profile.tenant_id).single();
+    const { data: tenant } = await supabase
+      .from("tenant")
+      .select("mfa_required_for_managers")
+      .eq("id", profile.tenant_id)
+      .single();
     if (tenant?.mfa_required_for_managers) {
       if (!profile.mfa_enrolled) throw new Error("Manager MFA enrollment required");
       const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (!data || data.currentLevel !== "aal2") throw new Error("Manager MFA verification required");
+      if (!data || data.currentLevel !== "aal2")
+        throw new Error("Manager MFA verification required");
     }
   }
   return profile;

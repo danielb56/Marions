@@ -13,7 +13,9 @@ function isAppRole(value: string): value is AppRole {
 export async function inviteTeamMember(_: ActionState, formData: FormData): Promise<ActionState> {
   const manager = await assertRole("manager");
   const displayName = String(formData.get("displayName") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const phone = String(formData.get("phone") ?? "").trim();
   const role = String(formData.get("role") ?? "");
 

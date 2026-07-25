@@ -10,7 +10,9 @@ describe("manager schedule cancellation", () => {
   it("authorises and tenant-scopes the entry before deleting it", () => {
     expect(migration).toContain("if not public.is_manager()");
     expect(migration).toContain("id = p_schedule_entry_id and tenant_id = tenant_key");
-    expect(migration.indexOf("if not public.is_manager()")).toBeLessThan(migration.indexOf("delete from public.schedule_entry"));
+    expect(migration.indexOf("if not public.is_manager()")).toBeLessThan(
+      migration.indexOf("delete from public.schedule_entry"),
+    );
   });
 
   it("returns a task to assigned only after its last scheduled date is removed", () => {
@@ -19,7 +21,10 @@ describe("manager schedule cancellation", () => {
   });
 
   it("keeps the manager reason out of worker notification bodies", () => {
-    const notifications = migration.slice(migration.indexOf("if schedule_row.worker_id"), migration.indexOf("insert into public.audit_event"));
+    const notifications = migration.slice(
+      migration.indexOf("if schedule_row.worker_id"),
+      migration.indexOf("insert into public.audit_event"),
+    );
     expect(notifications).not.toContain("p_reason");
     expect(migration).toContain("jsonb_build_object('reason', trim(p_reason))");
   });

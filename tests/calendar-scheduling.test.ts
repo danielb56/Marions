@@ -14,19 +14,19 @@ describe("multi-day scheduling UI", () => {
   it("marks today and exposes selected dates accessibly", () => {
     const calendar = source("src/components/multi-date-calendar.tsx");
     expect(calendar).toContain("date === today");
-    expect(calendar).toContain('aria-pressed={selected}');
-    expect(calendar).toContain('name={name}');
+    expect(calendar).toContain("aria-pressed={selected}");
+    expect(calendar).toContain("name={name}");
   });
 
   it("keeps the task calendar compact and hidden until requested", () => {
     const form = source("src/components/assignment-form.tsx");
     const calendar = source("src/components/multi-date-calendar.tsx");
     expect(form).toContain('<MultiDateCalendar name="dates" today={today} compact />');
-    expect(calendar).toContain('aria-expanded={open}');
+    expect(calendar).toContain("aria-expanded={open}");
     expect(calendar).toContain('role="dialog"');
     expect(calendar).toContain('event.key === "Escape"');
     expect(calendar).toContain('document.addEventListener("pointerdown", closeOutside)');
-    expect(calendar).toContain('onClick={() => setOpen(false)}');
+    expect(calendar).toContain("onClick={() => setOpen(false)}");
   });
 });
 
@@ -49,6 +49,8 @@ describe("whole-order calendar scheduling", () => {
   it("routes whole-order dates to manager and worker calendars", () => {
     expect(source("src/app/manager/calendar/page.tsx")).toContain("work_order:work_order_id");
     expect(source("src/app/worker/page.tsx")).toContain("work_order_id,planned_date");
-    expect(source("src/app/worker/upcoming/page.tsx")).toContain("schedule.work_order_id === task.work_order_id");
+    expect(source("src/app/worker/upcoming/page.tsx")).toContain(
+      "schedule.work_order_id === task.work_order_id",
+    );
   });
 });

@@ -7,14 +7,29 @@ const source = (path: string) => readFileSync(join(process.cwd(), path), "utf8")
 
 describe("manager task editing", () => {
   it("validates the operational task fields without accepting pricing", () => {
-    expect(taskDetailsInputSchema.parse({ description: "Remove and replace cornices", area: "Lounge", quantity: "4.5", unit: "lm" })).toEqual({
+    expect(
+      taskDetailsInputSchema.parse({
+        description: "Remove and replace cornices",
+        area: "Lounge",
+        quantity: "4.5",
+        unit: "lm",
+      }),
+    ).toEqual({
       description: "Remove and replace cornices",
       area: "Lounge",
       quantity: 4.5,
       unit: "lm",
     });
-    expect(taskDetailsInputSchema.safeParse({ description: "x", area: "", quantity: 0, unit: "dollars" }).success).toBe(false);
-    expect(Object.keys(taskDetailsInputSchema.shape)).toEqual(["area", "description", "quantity", "unit"]);
+    expect(
+      taskDetailsInputSchema.safeParse({ description: "x", area: "", quantity: 0, unit: "dollars" })
+        .success,
+    ).toBe(false);
+    expect(Object.keys(taskDetailsInputSchema.shape)).toEqual([
+      "area",
+      "description",
+      "quantity",
+      "unit",
+    ]);
   });
 
   it("renders an edit form for active tasks inside the work order", () => {

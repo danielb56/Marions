@@ -1,4 +1,4 @@
-import { TRADE_CATEGORIES, UNITS } from "@/lib/domain";
+import { AU_STATES, TRADE_CATEGORIES, UNITS } from "@/lib/domain";
 
 // V1 deterministic parser for Bentino-style work orders. No LLM: it relies on
 // the fixed header labels, the trade/area layout and the quantity/unit column.
@@ -86,7 +86,12 @@ function areaHeader(line: string): string | null {
   if (trimmed.startsWith("-")) return null;
   if (ITEM_RE.test(line)) return null;
   const words = trimmed.split(/\s+/);
-  if (words.length <= 4 && trimmed.length <= 32 && !/[.,]$/.test(trimmed) && !/\b(and|to|the|of|for|with|any|a)$/i.test(trimmed)) {
+  if (
+    words.length <= 4 &&
+    trimmed.length <= 32 &&
+    !/[.,]$/.test(trimmed) &&
+    !/\b(and|to|the|of|for|with|any|a)$/i.test(trimmed)
+  ) {
     return trimmed.replace(/:$/, "");
   }
   return null;
@@ -109,11 +114,17 @@ export function parseWorkOrder(text: string): WorkOrderDraft {
 
   // Client (principal) is the letterhead company, not the assigned subcontractor.
   const clientName = (
-    lines.find((line) => /\bPty\.?\s*Ltd\b|\bGroup\b|\bConstructions?\b|\bBuilders\b/i.test(line) && !/assigned/i.test(line)) ?? ""
+    lines.find(
+      (line) =>
+        /\bPty\.?\s*Ltd\b|\bGroup\b|\bConstructions?\b|\bBuilders\b/i.test(line) &&
+        !/assigned/i.test(line),
+    ) ?? ""
   ).trim();
 
   // Header ends at the first trade section or the standalone work-order number.
-  let scopeStart = lines.findIndex((line, index) => index > 2 && (tradeHeader(line) !== null || /^\d{3,}-\d{2,}$/.test(line)));
+  let scopeStart = lines.findIndex(
+    (line, index) => index > 2 && (tradeHeader(line) !== null || /^\d{3,}-\d{2,}$/.test(line)),
+  );
   if (scopeStart < 0) scopeStart = lines.length;
   const header = lines.slice(0, scopeStart);
 
@@ -130,10 +141,15 @@ export function parseWorkOrder(text: string): WorkOrderDraft {
     }
   }
 
-  const workOrderNumber = grab(header, "Work Order Number").replace(/\s+Supervisor.*$/i, "").trim();
+  const workOrderNumber = grab(header, "Work Order Number")
+    .replace(/\s+Supervisor.*$/i, "")
+    .trim();
 
   const address = grab(header, "Site Address");
-  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
+  const parts = address
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
   let streetAddress = "";
   let suburb = "";
   let state = "";
@@ -143,7 +159,11 @@ export function parseWorkOrder(text: string): WorkOrderDraft {
     const last = parts[parts.length - 1];
     const match = last.match(/([A-Za-z]{2,3})\s+(\d{4})$/);
     if (match) {
-      state = match[1].toUpperCase();
+      // Only accept a real state abbreviation. A two-or-three letter word that
+      // happens to precede the postcode is left blank so the form falls back to
+      // its default rather than failing validation on save.
+      const candidate = match[1].toUpperCase();
+      if ((AU_STATES as readonly string[]).includes(candidate)) state = candidate;
       postcode = match[2];
     }
     if (parts.length >= 3) suburb = parts[1];
@@ -178,7 +198,13 @@ export function parseWorkOrder(text: string): WorkOrderDraft {
     const item = line.match(ITEM_RE);
     if (item) {
       flush();
-      current = { trade, area, description: item[1].trim(), quantity: Number(item[2]), unit: item[3].toLowerCase() };
+      current = {
+        trade,
+        area,
+        description: item[1].trim(),
+        quantity: Number(item[2]),
+        unit: item[3].toLowerCase(),
+      };
       continue;
     }
 
@@ -198,10 +224,16 @@ export function parseWorkOrder(text: string): WorkOrderDraft {
   const all = lines.join("\n");
   const subtotalCents = toCents((all.match(/Subtotal\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? 0;
   const gstCents = toCents((all.match(/\bGST\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? 0;
-  const totalCents = toCents((all.match(/\bTotal\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? subtotalCents + gstCents;
+  const totalCents =
+    toCents((all.match(/\bTotal\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? subtotalCents + gstCents;
 
-  const requiredFound = [clientName, workOrderNumber, streetAddress, postcode].filter(Boolean).length;
-  const confidence = Math.min(1, (requiredFound / 4) * 0.5 + (tasks.length ? 0.3 : 0) + (totalCents ? 0.2 : 0));
+  const requiredFound = [clientName, workOrderNumber, streetAddress, postcode].filter(
+    Boolean,
+  ).length;
+  const confidence = Math.min(
+    1,
+    (requiredFound / 4) * 0.5 + (tasks.length ? 0.3 : 0) + (totalCents ? 0.2 : 0),
+  );
 
   return {
     fields: {

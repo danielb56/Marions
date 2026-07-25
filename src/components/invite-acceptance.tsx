@@ -18,10 +18,17 @@ export function InviteAcceptance() {
       const accessToken = hash.get("access_token");
       const refreshToken = hash.get("refresh_token");
       const linkType = hash.get("type");
-      const intent = linkType === "invite" || (!linkType && url.searchParams.get("intent") === "invite") ? "invite" : "recovery";
+      const intent =
+        linkType === "invite" || (!linkType && url.searchParams.get("intent") === "invite")
+          ? "invite"
+          : "recovery";
 
       // Remove one-time credentials from browser history immediately.
-      window.history.replaceState({}, "", `/auth/accept-invite${intent === "invite" ? "?intent=invite" : ""}`);
+      window.history.replaceState(
+        {},
+        "",
+        `/auth/accept-invite${intent === "invite" ? "?intent=invite" : ""}`,
+      );
 
       const supabase = createClient();
       let authError: Error | null = null;
@@ -29,22 +36,45 @@ export function InviteAcceptance() {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         authError = exchangeError;
       } else if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
         authError = sessionError;
       } else authError = new Error("No invitation session");
 
       if (!active) return;
       if (authError) {
-        setError("This invitation link is invalid or has expired. Ask your manager to send a new invitation.");
+        setError(
+          "This invitation link is invalid or has expired. Ask your manager to send a new invitation.",
+        );
         return;
       }
       router.replace(intent === "invite" ? "/update-password?invite=1" : "/update-password");
       router.refresh();
     };
     void accept();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [router]);
 
-  if (error) return <div role="alert"><p className="text-sm leading-6 text-[#913a31]">{error}</p><a href="/sign-in" className="mt-4 inline-flex min-h-11 items-center font-semibold text-[#0077a8]">Return to sign in</a></div>;
-  return <p role="status" className="flex items-center gap-3 text-sm font-semibold text-[#596461]"><LoaderCircle className="h-5 w-5 animate-spin text-[#0077a8]" />Preparing your secure account setup...</p>;
+  if (error)
+    return (
+      <div role="alert">
+        <p className="text-sm leading-6 text-[#913a31]">{error}</p>
+        <a
+          href="/sign-in"
+          className="mt-4 inline-flex min-h-11 items-center font-semibold text-[#0077a8]"
+        >
+          Return to sign in
+        </a>
+      </div>
+    );
+  return (
+    <p role="status" className="flex items-center gap-3 text-sm font-semibold text-[#596461]">
+      <LoaderCircle className="h-5 w-5 animate-spin text-[#0077a8]" />
+      Preparing your secure account setup...
+    </p>
+  );
 }

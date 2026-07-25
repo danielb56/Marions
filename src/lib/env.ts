@@ -21,26 +21,36 @@ export type ServerEnv = z.infer<typeof serverSchema>;
 
 export function hasSupabaseConfig() {
   return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   );
 }
 
 export function getPublicSupabaseEnv() {
-  const parsed = serverSchema.pick({
-    NEXT_PUBLIC_SUPABASE_URL: true,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: true,
-  }).safeParse(process.env);
+  const parsed = serverSchema
+    .pick({
+      NEXT_PUBLIC_SUPABASE_URL: true,
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: true,
+    })
+    .safeParse(process.env);
   if (!parsed.success) {
     throw new Error("Supabase public environment variables are not configured.");
   }
   return parsed.data;
 }
 
+// The environment cannot change within an isolate's lifetime, so validate once
+// and reuse. This is called per request by the cron route and on every R2
+// signing operation.
+let serverEnv: ServerEnv | null = null;
+
 export function getServerEnv(): ServerEnv {
+  if (serverEnv) return serverEnv;
   const parsed = serverSchema.safeParse(process.env);
   if (!parsed.success) {
-    throw new Error(`Invalid server environment: ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`);
+    throw new Error(
+      `Invalid server environment: ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`,
+    );
   }
-  return parsed.data;
+  serverEnv = parsed.data;
+  return serverEnv;
 }
