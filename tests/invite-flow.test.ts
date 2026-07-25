@@ -17,7 +17,9 @@ describe("worker invitation setup", () => {
     expect(acceptance).toContain('hash.get("refresh_token")');
     expect(acceptance).toContain("supabase.auth.setSession");
     expect(acceptance).toContain('new Error("No invitation session")');
-    expect(acceptance).toContain('router.replace(intent === "invite" ? "/update-password?invite=1"');
+    expect(acceptance).toContain(
+      'router.replace(intent === "invite" ? "/update-password?invite=1"',
+    );
   });
 
   it("requires password confirmation, then signs invited users out to sign in normally", () => {

@@ -32,8 +32,13 @@ describe("database security boundaries", () => {
 
   it("checks task tenancy before an assignment mutation", () => {
     const sql = migration("0011_rls_pricing_leak_views.sql");
-    const functionBody = sql.slice(sql.indexOf("public.assign_task"), sql.indexOf("public.schedule_task"));
+    const functionBody = sql.slice(
+      sql.indexOf("public.assign_task"),
+      sql.indexOf("public.schedule_task"),
+    );
     expect(functionBody.indexOf("Task not found")).toBeGreaterThan(-1);
-    expect(functionBody.indexOf("Task not found")).toBeLessThan(functionBody.indexOf("update public.assignment"));
+    expect(functionBody.indexOf("Task not found")).toBeLessThan(
+      functionBody.indexOf("update public.assignment"),
+    );
   });
 });

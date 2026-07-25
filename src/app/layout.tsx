@@ -9,7 +9,8 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   title: { default: "REME Painting Group Work Orders", template: "%s | REME Painting Group" },
-  description: "Secure work-order scheduling, field completion and approval for REME Painting Group.",
+  description:
+    "Secure work-order scheduling, field completion and approval for REME Painting Group.",
   applicationName: "REME Painting Group",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/reme-painting-group-logo.jpg", apple: "/reme-painting-group-logo.jpg" },
@@ -20,5 +21,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#003f70", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en-AU" className={`${geistSans.variable} ${geistMono.variable} antialiased`}><body>{children}<PwaRegister /></body></html>;
+  return (
+    <html lang="en-AU" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body>
+        {children}
+        <PwaRegister />
+      </body>
+    </html>
+  );
 }

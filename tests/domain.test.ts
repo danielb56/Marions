@@ -1,27 +1,44 @@
 import { describe, expect, it } from "vitest";
-import { assertWorkerSafe, deriveWorkOrderStatus, parseScheduleDates, parseTaskLines } from "@/lib/domain";
+import {
+  assertWorkerSafe,
+  deriveWorkOrderStatus,
+  parseScheduleDates,
+  parseTaskLines,
+} from "@/lib/domain";
 import { toCents } from "@/lib/utils";
 
 describe("Australian work-order money", () => {
-  it("stores the supplied work order total as integer cents", () => expect(toCents("$2,200.00")).toBe(220000));
+  it("stores the supplied work order total as integer cents", () =>
+    expect(toCents("$2,200.00")).toBe(220000));
   it("never creates floating point cent fragments", () => expect(toCents("19.99")).toBe(1999));
 });
 
 describe("task paste helper", () => {
   it("groups recognised lines and ignores the Material artefact", () => {
-    const tasks = parseTaskLines("Painting Material\nMaterial\nPrepare walls 6/m2\nCarpentry\nReplace skirting 3/lm");
-    expect(tasks).toMatchObject([{ trade: "Painting", description: "Prepare walls", quantity: 6, unit: "m2" }, { trade: "Carpentry", description: "Replace skirting", quantity: 3, unit: "lm" }]);
+    const tasks = parseTaskLines(
+      "Painting Material\nMaterial\nPrepare walls 6/m2\nCarpentry\nReplace skirting 3/lm",
+    );
+    expect(tasks).toMatchObject([
+      { trade: "Painting", description: "Prepare walls", quantity: 6, unit: "m2" },
+      { trade: "Carpentry", description: "Replace skirting", quantity: 3, unit: "lm" },
+    ]);
   });
 });
 
 describe("schedule date parsing", () => {
   it("deduplicates and sorts valid calendar dates", () => {
-    expect(parseScheduleDates("2026-07-24,2026-07-22,2026-07-24")).toEqual(["2026-07-22", "2026-07-24"]);
+    expect(parseScheduleDates("2026-07-24,2026-07-22,2026-07-24")).toEqual([
+      "2026-07-22",
+      "2026-07-24",
+    ]);
   });
 
-  it.each(["", "2026-02-30", "22/07/2026", "2026-13-01"])("rejects invalid date input %s", (input) => {
-    expect(parseScheduleDates(input)).toBeNull();
-  });
+  it.each(["", "2026-02-30", "22/07/2026", "2026-13-01"])(
+    "rejects invalid date input %s",
+    (input) => {
+      expect(parseScheduleDates(input)).toBeNull();
+    },
+  );
 
   it("enforces the server-side selection limit", () => {
     expect(parseScheduleDates("2026-07-22,2026-07-23", 1)).toBeNull();
@@ -29,11 +46,18 @@ describe("schedule date parsing", () => {
 });
 
 describe("status roll-up", () => {
-  it("prioritises blocked work", () => expect(deriveWorkOrderStatus(["completed", "blocked"])).toBe("blocked"));
-  it("signs off when every active task is complete", () => expect(deriveWorkOrderStatus(["completed", "cancelled"])).toBe("signed_off"));
+  it("prioritises blocked work", () =>
+    expect(deriveWorkOrderStatus(["completed", "blocked"])).toBe("blocked"));
+  it("signs off when every active task is complete", () =>
+    expect(deriveWorkOrderStatus(["completed", "cancelled"])).toBe("signed_off"));
 });
 
 describe("worker response assertion", () => {
-  it("accepts operational data", () => expect(assertWorkerSafe({ description: "Paint wall", quantity: 2, unit: "m2" })).toBeTruthy());
-  it.each(["unit_rate", "line_total", "subtotal", "gst_cents", "total_cents", "work_order_totals"])("blocks %s", (key) => expect(() => assertWorkerSafe({ [key]: 10 })).toThrow("Unsafe worker response blocked"));
+  it("accepts operational data", () =>
+    expect(assertWorkerSafe({ description: "Paint wall", quantity: 2, unit: "m2" })).toBeTruthy());
+  it.each(["unit_rate", "line_total", "subtotal", "gst_cents", "total_cents", "work_order_totals"])(
+    "blocks %s",
+    (key) =>
+      expect(() => assertWorkerSafe({ [key]: 10 })).toThrow("Unsafe worker response blocked"),
+  );
 });

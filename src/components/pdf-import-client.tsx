@@ -10,7 +10,9 @@ const PdfImportForm = dynamic(
   () => import("@/components/pdf-import-form").then((module) => module.PdfImportForm),
   {
     ssr: false,
-    loading: () => <Card className="p-5 text-sm text-[#77817e] sm:p-6">Preparing PDF import...</Card>,
+    loading: () => (
+      <Card className="p-5 text-sm text-[#77817e] sm:p-6">Preparing PDF import...</Card>
+    ),
   },
 );
 

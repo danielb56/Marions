@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 
 const source = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 const migration = source("supabase/migrations/0016_calendar_queue_and_auto_schedule.sql");
-const bulkUnassignMigration = source("supabase/migrations/0017_bulk_unassign_unscheduled_tasks.sql");
+const bulkUnassignMigration = source(
+  "supabase/migrations/0017_bulk_unassign_unscheduled_tasks.sql",
+);
 
 describe("whole-order automatic task scheduling", () => {
   it("keeps task order and balances work across the selected dates", () => {
@@ -25,9 +27,13 @@ describe("whole-order automatic task scheduling", () => {
   });
 
   it("remains manager-only and tenant-scoped", () => {
-    const functionStart = migration.indexOf("create or replace function public.assign_and_schedule_whole_order");
+    const functionStart = migration.indexOf(
+      "create or replace function public.assign_and_schedule_whole_order",
+    );
     const firstInsert = migration.indexOf("insert into public.schedule_entry", functionStart);
-    expect(migration.indexOf("if not public.is_manager()", functionStart)).toBeLessThan(firstInsert);
+    expect(migration.indexOf("if not public.is_manager()", functionStart)).toBeLessThan(
+      firstInsert,
+    );
     expect(migration.slice(functionStart, firstInsert)).toContain("tenant_id = tenant_key");
   });
 });
@@ -51,7 +57,10 @@ describe("calendar assignment queues", () => {
     expect(unassign).toContain("status = 'reassigned'");
     expect(unassign).toContain("set status = 'ready'");
     expect(unassign).toContain("'reason', trim(p_reason)");
-    const notifications = unassign.slice(unassign.indexOf("for recipient in"), unassign.indexOf("update public.assignment"));
+    const notifications = unassign.slice(
+      unassign.indexOf("for recipient in"),
+      unassign.indexOf("update public.assignment"),
+    );
     expect(notifications).not.toContain("p_reason");
   });
 
@@ -71,7 +80,9 @@ describe("calendar assignment queues", () => {
     expect(bulkUnassignMigration).toContain("t.status in ('draft','ready','assigned','scheduled')");
     expect(bulkUnassignMigration).toContain("a.status <> 'reassigned'");
     expect(bulkUnassignMigration).toContain("se.planned_date >= current_date");
-    expect(bulkUnassignMigration).toContain("se.task_id = t.id or se.work_order_id = t.work_order_id");
+    expect(bulkUnassignMigration).toContain(
+      "se.task_id = t.id or se.work_order_id = t.work_order_id",
+    );
     expect(bulkUnassignMigration).toContain("status = 'reassigned'");
     expect(bulkUnassignMigration).toContain("set status = 'ready'");
     expect(bulkUnassignMigration).toContain("task.bulk_unassigned");

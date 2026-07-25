@@ -7,9 +7,8 @@ export async function GET(request: NextRequest) {
   const next = request.nextUrl.searchParams.get("next");
   const intent = request.nextUrl.searchParams.get("intent");
   const safeNext = safeAuthRedirect(next);
-  const destination = intent === "invite" && safeNext === "/update-password"
-    ? "/update-password?invite=1"
-    : safeNext;
+  const destination =
+    intent === "invite" && safeNext === "/update-password" ? "/update-password?invite=1" : safeNext;
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);

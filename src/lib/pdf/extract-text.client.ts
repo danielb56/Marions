@@ -21,23 +21,33 @@ type Row = { y: number; cells: Cell[] };
 // Rebuild visual lines from pdf.js text items: group items by their y position,
 // order each line left-to-right by x, then order lines top-to-bottom. This keeps
 // the quantity column on the same line as the start of its description.
-async function renderPageLines(page: { getTextContent: () => Promise<{ items: unknown[] }> }): Promise<string[]> {
+async function renderPageLines(page: {
+  getTextContent: () => Promise<{ items: unknown[] }>;
+}): Promise<string[]> {
   const content = await page.getTextContent();
-  const rows: Row[] = [];
+
+  // Rows are keyed by rounded y so an item finds its line in constant time. A
+  // linear scan over every row for every item made this quadratic, which is felt
+  // on a ten-page order in the manager's browser. The ±3 tolerance is preserved
+  // by probing the neighbouring keys rather than by comparing against all rows.
+  const rows = new Map<number, Row>();
   for (const raw of content.items) {
     const item = raw as { str?: unknown; transform?: unknown };
     if (typeof item.str !== "string" || !Array.isArray(item.transform)) continue;
     const transform = item.transform as number[];
     const y = Math.round(transform[5]);
     const cell: Cell = { x: transform[4], text: item.str };
-    const row = rows.find((candidate) => Math.abs(candidate.y - y) <= 3);
+    let row = rows.get(y);
+    for (let offset = 1; offset <= 3 && !row; offset += 1) {
+      row = rows.get(y - offset) ?? rows.get(y + offset);
+    }
     if (row) row.cells.push(cell);
-    else rows.push({ y, cells: [cell] });
+    else rows.set(y, { y, cells: [cell] });
   }
 
-  rows.sort((a, b) => b.y - a.y);
+  const ordered = [...rows.values()].sort((a, b) => b.y - a.y);
   const lines: string[] = [];
-  for (const row of rows) {
+  for (const row of ordered) {
     row.cells.sort((a, b) => a.x - b.x);
     let line = "";
     for (const cell of row.cells) {
@@ -50,7 +60,10 @@ async function renderPageLines(page: { getTextContent: () => Promise<{ items: un
   return lines;
 }
 
-export async function extractWorkOrderText(bytes: Uint8Array, options: { maxPages?: number } = {}): Promise<ExtractResult> {
+export async function extractWorkOrderText(
+  bytes: Uint8Array,
+  options: { maxPages?: number } = {},
+): Promise<ExtractResult> {
   const maxPages = options.maxPages ?? 10;
   const pdf = await getDocumentProxy(bytes);
   const pageCount: number = pdf.numPages;

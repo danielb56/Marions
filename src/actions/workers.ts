@@ -9,9 +9,12 @@ import type { ActionState } from "@/actions/types";
 export async function inviteWorker(_: ActionState, formData: FormData): Promise<ActionState> {
   const manager = await assertRole("manager");
   const displayName = String(formData.get("displayName") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const phone = String(formData.get("phone") ?? "").trim();
-  if (displayName.length < 2 || !email.includes("@")) return { error: "Enter the worker's name and a valid email." };
+  if (displayName.length < 2 || !email.includes("@"))
+    return { error: "Enter the worker's name and a valid email." };
   try {
     const admin = createAdminClient();
     const { error } = await admin.auth.admin.inviteUserByEmail(email, {
@@ -32,7 +35,12 @@ export async function disableWorker(_: ActionState, formData: FormData): Promise
   const reason = String(formData.get("reason") ?? "").trim();
   if (!userId || !reason) return { error: "A reason is required." };
   const supabase = await createClient();
-  const { error } = await supabase.from("user_profile").update({ is_active: false, disabled_at: new Date().toISOString(), disabled_reason: reason }).eq("id", userId).eq("tenant_id", manager.tenant_id).eq("role", "worker");
+  const { error } = await supabase
+    .from("user_profile")
+    .update({ is_active: false, disabled_at: new Date().toISOString(), disabled_reason: reason })
+    .eq("id", userId)
+    .eq("tenant_id", manager.tenant_id)
+    .eq("role", "worker");
   if (error) return { error: "The worker could not be disabled." };
   const admin = createAdminClient();
   await admin.auth.admin.updateUserById(userId, { ban_duration: "876000h" });

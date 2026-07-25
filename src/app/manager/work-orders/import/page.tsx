@@ -12,7 +12,15 @@ export default function ImportWorkOrderPage() {
         eyebrow="Import"
         title="Import a work order PDF"
         description="Upload a work order. REME Work Orders reads the header, scope and total cost, then hands you a pre-filled draft to review and edit before saving."
-        actions={<Link href="/manager/work-orders/new" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#d9d4c9] bg-white px-4 text-sm font-semibold"><ArrowLeft className="h-4 w-4" />Manual entry</Link>}
+        actions={
+          <Link
+            href="/manager/work-orders/new"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#d9d4c9] bg-white px-4 text-sm font-semibold"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Manual entry
+          </Link>
+        }
       />
       <PdfImportClient />
     </>

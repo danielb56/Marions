@@ -9,7 +9,9 @@ describe("manager team access", () => {
     const action = source("src/actions/team.ts");
     expect(action).toContain('assertRole("manager")');
     expect(action).toContain("inviteUserByEmail");
-    expect(action.indexOf('assertRole("manager")')).toBeLessThan(action.indexOf("inviteUserByEmail"));
+    expect(action.indexOf('assertRole("manager")')).toBeLessThan(
+      action.indexOf("inviteUserByEmail"),
+    );
   });
 
   it("whitelists account roles and stamps the manager's tenant onto the invitation", () => {

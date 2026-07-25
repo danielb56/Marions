@@ -9,5 +9,6 @@ export async function markNotificationRead(formData: FormData) {
   const id = Number(formData.get("notificationId"));
   const supabase = await createClient();
   await supabase.rpc("mark_notification_read", { p_notification_id: id });
-  revalidatePath("/manager/notifications"); revalidatePath("/worker/notifications");
+  revalidatePath("/manager/notifications");
+  revalidatePath("/worker/notifications");
 }
