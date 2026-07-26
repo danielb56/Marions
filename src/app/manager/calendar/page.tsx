@@ -46,7 +46,12 @@ type QueueTask = {
   id: number;
   description: string;
   status: TaskStatus;
-  work_order: { id: number; work_order_number: string; client: { name: string } | null } | null;
+  work_order: {
+    id: number;
+    work_order_number: string;
+    status: WorkOrderStatus;
+    client: { name: string } | null;
+  } | null;
   assignment: Array<{ id: number; status: string; worker_id: number }>;
 };
 type UpcomingScheduleTarget = {
@@ -86,12 +91,16 @@ export default async function CalendarPage({
       .lte("planned_date", to)
       .order("start_time"),
     supabase.from("worker").select("id,user_profile:user_id(display_name,is_active)").order("id"),
+    // The inner join plus the status filter keeps every task belonging to a
+    // cancelled order out of all three queues, whatever state the task itself
+    // was left in.
     supabase
       .from("task")
       .select(
-        "id,description,status,work_order:work_order_id(id,work_order_number,client:client_id(name)),assignment(id,status,worker_id)",
+        "id,description,status,work_order:work_order_id!inner(id,work_order_number,status,client:client_id(name)),assignment(id,status,worker_id)",
       )
       .not("status", "in", "(completed,cancelled)")
+      .neq("work_order.status", "cancelled")
       .order("id"),
     supabase
       .from("schedule_entry")
@@ -99,7 +108,11 @@ export default async function CalendarPage({
       .gte("planned_date", today)
       .order("planned_date"),
   ]);
-  const schedule = (scheduleData ?? []) as unknown as ScheduleItem[];
+  // Cancelling clears an order's dates, so this should already be empty. Kept as
+  // a guard so a stray row can never put cancelled work back on the grid.
+  const schedule = ((scheduleData ?? []) as unknown as ScheduleItem[]).filter(
+    (item) => (item.task?.work_order ?? item.work_order)?.status !== "cancelled",
+  );
   const workers = (workerData ?? []).filter(
     (worker) => (worker.user_profile as unknown as { is_active?: boolean } | null)?.is_active,
   ) as unknown as WorkerRow[];

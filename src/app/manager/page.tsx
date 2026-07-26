@@ -62,10 +62,13 @@ export default async function ManagerDashboard() {
         .from("completion_submission")
         .select("id", { count: "exact", head: true })
         .eq("status", "submitted"),
+      // Cancelled orders must not feed the unassigned or overdue tiles, however
+      // their tasks were left.
       supabase
         .from("task")
-        .select("id,status,work_order!inner(completion_due_date),assignment(id)")
-        .not("status", "in", "(completed,cancelled)"),
+        .select("id,status,work_order!inner(completion_due_date,status),assignment(id)")
+        .not("status", "in", "(completed,cancelled)")
+        .neq("work_order.status", "cancelled"),
       supabase
         .from("schedule_entry")
         .select(
@@ -96,7 +99,9 @@ export default async function ManagerDashboard() {
     (sum, row) => sum + Number(row.total_cents ?? 0),
     0,
   );
-  const schedule = (scheduleResult.data ?? []) as unknown as ScheduleRow[];
+  const schedule = ((scheduleResult.data ?? []) as unknown as ScheduleRow[]).filter(
+    (row) => (row.task?.work_order ?? row.work_order)?.status !== "cancelled",
+  );
   const audit = (auditResult.data ?? []) as unknown as AuditRow[];
   const cards = [
     {
