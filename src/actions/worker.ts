@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { actionError, throwActionError } from "@/actions/errors";
 import type { ActionState } from "@/actions/types";
 
 export async function startTask(formData: FormData) {
@@ -11,7 +12,7 @@ export async function startTask(formData: FormData) {
   const taskId = Number(formData.get("taskId"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("worker_start_task", { p_task_id: taskId });
-  if (error) throw new Error(error.message);
+  if (error) throwActionError("task.start", error);
   revalidatePath(`/worker/tasks/${taskId}`);
   revalidatePath("/worker");
 }
@@ -31,7 +32,7 @@ export async function submitCompletion(_: ActionState, formData: FormData): Prom
     p_cannot_complete: cannotComplete,
     p_problem_report: problemReport,
   });
-  if (error) return { error: error.message };
+  if (error) return actionError("task.submit_completion", error);
   revalidatePath("/worker");
   revalidatePath(`/worker/tasks/${taskId}`);
   redirect(`/worker/tasks/${taskId}?submitted=${data}`);
@@ -52,7 +53,7 @@ export async function addWorkerNote(_: ActionState, formData: FormData): Promise
     visibility: "worker_visible",
     note_type: "general",
   });
-  if (error) return { error: "The note could not be saved." };
+  if (error) return actionError("note.create", error, "The note could not be saved.");
   revalidatePath(`/worker/tasks/${taskId}`);
   return { ok: true, message: "Note added." };
 }
@@ -69,7 +70,7 @@ export async function updateWorkerProfile(
     p_display_name: name,
     p_phone: phone,
   });
-  if (error) return { error: error.message };
+  if (error) return actionError("profile.update", error);
   revalidatePath("/worker/profile");
   return { ok: true, message: "Profile updated." };
 }

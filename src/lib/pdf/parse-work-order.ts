@@ -72,6 +72,21 @@ function toCents(value: string | null | undefined): number | null {
   return Math.round((amount + Number.EPSILON) * 100);
 }
 
+// Money is read from the totals block, and the last match wins.
+//
+// Taking the first match anywhere in the document meant a figure quoted inside a
+// task description, or a per-page running total, could outrank the real one — on
+// the single manager-only financial field in the whole import.
+function lastMoney(haystack: string, label: string): number | null {
+  const pattern = new RegExp(`${label}\\s*\\$?\\s*([\\d,]+\\.\\d{2})`, "gi");
+  let cents: number | null = null;
+  for (const match of haystack.matchAll(pattern)) {
+    const value = toCents(match[1]);
+    if (value != null) cents = value;
+  }
+  return cents;
+}
+
 function tradeHeader(line: string): string | null {
   const trimmed = line.replace(/\s+Material$/i, "").trim();
   return TRADE_CATEGORIES.find((trade) => trade.toLowerCase() === trimmed.toLowerCase()) ?? null;
@@ -222,10 +237,13 @@ export function parseWorkOrder(text: string): WorkOrderDraft {
   // Parse the single work-order total. Subtotal and GST are only fallbacks for
   // documents that omit a final total; task-level pricing is not imported.
   const all = lines.join("\n");
-  const subtotalCents = toCents((all.match(/Subtotal\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? 0;
-  const gstCents = toCents((all.match(/\bGST\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? 0;
-  const totalCents =
-    toCents((all.match(/\bTotal\s*\$?\s*([\d,]+\.\d{2})/i) ?? [])[1]) ?? subtotalCents + gstCents;
+  // Narrow to the totals block when the document has one, so a dollar figure in
+  // the scope above can never be mistaken for the order total.
+  const totalsAt = all.search(/^Totals\b/im);
+  const moneyRegion = totalsAt >= 0 ? all.slice(totalsAt) : all;
+  const subtotalCents = lastMoney(moneyRegion, "Subtotal") ?? 0;
+  const gstCents = lastMoney(moneyRegion, "\\bGST") ?? 0;
+  const totalCents = lastMoney(moneyRegion, "\\bTotal") ?? subtotalCents + gstCents;
 
   const requiredFound = [clientName, workOrderNumber, streetAddress, postcode].filter(
     Boolean,

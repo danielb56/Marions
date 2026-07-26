@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { assertRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { actionError } from "@/actions/errors";
 import type { ActionState } from "@/actions/types";
 
 export async function updateTenantSettings(
@@ -26,7 +27,7 @@ export async function updateTenantSettings(
       mfa_required_for_managers: formData.get("mfaRequired") === "on",
     })
     .eq("id", manager.tenant_id);
-  if (error) return { error: error.message };
+  if (error) return actionError("tenant.update_settings", error);
   revalidatePath("/manager/settings");
   return { ok: true, message: "Settings saved." };
 }
