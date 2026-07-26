@@ -62,8 +62,9 @@ export function UnassignAllControl() {
         <div className="flex gap-2 rounded-xl bg-[#f5dfdc] p-3 text-sm text-[#7b302a]">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
-            This moves every job in Assigned but unscheduled into Unassigned jobs. Assignment
-            history is kept, and each affected worker is notified once.
+            This moves every job in Assigned but unscheduled into Unassigned jobs and clears any
+            dates still on their calendar. Assignment history is kept, and each affected worker is
+            notified once.
           </p>
         </div>
         <div>

@@ -124,40 +124,27 @@ export function ScheduleTaskForm({
   );
 }
 
+// Removing one date is a routine planning correction, so it is a single press:
+// no disclosure to open and no reason to type. The audit event still records it.
 export function UnscheduleEntryForm({ scheduleEntryId }: { scheduleEntryId: number }) {
   const [state, action] = useActionState(unscheduleEntry, {} as ActionState);
   return (
-    <details className="shrink-0 text-left">
-      <summary className="cursor-pointer list-none rounded-lg px-2 py-1 text-xs font-semibold text-[#913a31] hover:bg-[#f5dfdc]">
-        Remove
-      </summary>
-      <form
-        action={action}
-        className="mt-2 w-full min-w-56 space-y-2 rounded-xl border border-[#e0dcd3] bg-white p-3 shadow-lg"
-      >
+    <div className="shrink-0 text-left">
+      <form action={action}>
         <input type="hidden" name="scheduleEntryId" value={scheduleEntryId} />
-        <Label>Reason</Label>
-        <Input
-          name="reason"
-          required
-          minLength={2}
-          maxLength={500}
-          placeholder="Why is this date being removed?"
-        />
-        {state.error && (
-          <p role="alert" className="text-xs text-[#913a31]">
-            {state.error}
-          </p>
-        )}
-        {state.message && (
-          <p role="status" className="text-xs text-[#2f6249]">
-            {state.message}
-          </p>
-        )}
-        <SubmitButton className="w-full" pendingText="Removing...">
-          Remove scheduled date
+        <SubmitButton
+          variant="ghost"
+          className="min-h-9 px-2 py-1 text-xs font-semibold text-[#913a31] hover:bg-[#f5dfdc]"
+          pendingText="Removing..."
+        >
+          Remove
         </SubmitButton>
       </form>
-    </details>
+      {state.error && (
+        <p role="alert" className="mt-1 text-xs text-[#913a31]">
+          {state.error}
+        </p>
+      )}
+    </div>
   );
 }

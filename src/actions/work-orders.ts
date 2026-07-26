@@ -214,15 +214,16 @@ export async function scheduleTask(_: ActionState, formData: FormData): Promise<
 export async function unscheduleEntry(_: ActionState, formData: FormData): Promise<ActionState> {
   await assertRole("manager");
   const scheduleEntryId = Number(formData.get("scheduleEntryId"));
+  // Removing one date is a routine planning correction, so it takes a single
+  // press. A reason is still accepted if a caller sends one.
   const reason = String(formData.get("reason") ?? "").trim();
   if (!Number.isInteger(scheduleEntryId) || scheduleEntryId < 1)
     return { error: "The scheduled date is invalid." };
-  if (reason.length < 2 || reason.length > 500)
-    return { error: "Enter a reason between 2 and 500 characters." };
+  if (reason.length > 500) return { error: "A reason must be 500 characters or fewer." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("unschedule_entry", {
     p_schedule_entry_id: scheduleEntryId,
-    p_reason: reason,
+    p_reason: reason || null,
   });
   if (error) return actionError("schedule_entry.unschedule", error);
   revalidatePath("/manager/calendar");
@@ -245,7 +246,11 @@ export async function unassignTask(_: ActionState, formData: FormData): Promise<
     p_reason: reason,
   });
   if (error) return actionError("task.unassign", error);
-  const result = data as { workOrderId?: number; unassignedWorkers?: number } | null;
+  const result = data as {
+    workOrderId?: number;
+    unassignedWorkers?: number;
+    removedScheduleEntries?: number;
+  } | null;
   if (result?.workOrderId) revalidatePath(`/manager/work-orders/${result.workOrderId}`);
   revalidatePath("/manager/calendar");
   revalidatePath("/manager/work-orders");
@@ -253,9 +258,10 @@ export async function unassignTask(_: ActionState, formData: FormData): Promise<
   revalidatePath("/worker");
   revalidatePath("/worker/jobs");
   revalidatePath("/worker/upcoming");
+  const clearedDates = result?.removedScheduleEntries ?? 0;
   return {
     ok: true,
-    message: `Task unassigned from ${result?.unassignedWorkers ?? 0} worker${result?.unassignedWorkers === 1 ? "" : "s"}.`,
+    message: `Task unassigned from ${result?.unassignedWorkers ?? 0} worker${result?.unassignedWorkers === 1 ? "" : "s"}${clearedDates ? ` and ${clearedDates} scheduled date${clearedDates === 1 ? "" : "s"} cleared` : ""}.`,
   };
 }
 
@@ -276,6 +282,7 @@ export async function unassignAllUnscheduled(
     unassignedTasks?: number;
     affectedWorkers?: number;
     removedAssignments?: number;
+    removedScheduleEntries?: number;
   } | null;
   revalidatePath("/manager/calendar");
   revalidatePath("/manager/work-orders");
@@ -284,11 +291,12 @@ export async function unassignAllUnscheduled(
   revalidatePath("/worker/jobs");
   revalidatePath("/worker/upcoming");
   const unassigned = result?.unassignedTasks ?? 0;
+  const clearedDates = result?.removedScheduleEntries ?? 0;
   return {
     ok: true,
     message:
       unassigned > 0
-        ? `${unassigned} ${unassigned === 1 ? "job" : "jobs"} moved to Unassigned jobs across ${result?.affectedWorkers ?? 0} worker${result?.affectedWorkers === 1 ? "" : "s"}.`
+        ? `${unassigned} ${unassigned === 1 ? "job" : "jobs"} moved to Unassigned jobs across ${result?.affectedWorkers ?? 0} worker${result?.affectedWorkers === 1 ? "" : "s"}${clearedDates ? `, and ${clearedDates} leftover scheduled date${clearedDates === 1 ? "" : "s"} cleared` : ""}.`
         : "There were no assigned, unscheduled jobs to unassign.",
   };
 }
