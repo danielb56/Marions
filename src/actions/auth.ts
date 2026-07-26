@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { hasSupabaseConfig } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/redact";
 
 export type AuthState = { error?: string; message?: string };
 
@@ -79,7 +80,12 @@ export async function updatePassword(_: AuthState, formData: FormData): Promise<
       error: "This password link is invalid or has expired. Request a new link and try again.",
     };
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: error.message };
+  // Auth validation messages ("should be different from the old password")
+  // are the only guidance the user gets here, so they are kept.
+  if (error) {
+    logger.error("auth.update_password_rejected", error);
+    return { error: error.message };
+  }
   if (intent === "invite") {
     await supabase.auth.signOut();
     redirect("/sign-in?setup=complete");

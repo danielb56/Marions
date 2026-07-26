@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { assertRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { actionError } from "@/actions/errors";
 import type { ActionState } from "@/actions/types";
 
 export async function reviewSubmission(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -20,7 +21,7 @@ export async function reviewSubmission(_: ActionState, formData: FormData): Prom
     p_decision: decision,
     p_review_notes: notes,
   });
-  if (error) return { error: error.message };
+  if (error) return actionError("submission.review", error);
   revalidatePath("/manager/review");
   revalidatePath("/manager");
   revalidatePath("/manager/work-orders");

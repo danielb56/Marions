@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { logger } from "@/lib/redact";
 import type { ActionState } from "@/actions/types";
 import { assertRole } from "@/lib/auth";
 import { APP_ROLES, type AppRole } from "@/lib/domain";
@@ -43,8 +44,14 @@ export async function inviteTeamMember(_: ActionState, formData: FormData): Prom
       },
       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback?next=/update-password&intent=invite`,
     });
-    if (error) return { error: error.message };
+    // Auth admin messages ("already been registered") are written for the
+    // manager reading them, so they are kept. They are logged now too.
+    if (error) {
+      logger.error("team.invite_rejected", error);
+      return { error: error.message };
+    }
   } catch (error) {
+    logger.error("team.invite_failed", error);
     return { error: error instanceof Error ? error.message : "The invitation could not be sent." };
   }
 
