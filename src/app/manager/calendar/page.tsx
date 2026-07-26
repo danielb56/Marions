@@ -8,7 +8,11 @@ import {
   ExternalLink,
   TriangleAlert,
 } from "lucide-react";
-import { UnassignAllControl, UnassignTaskForm } from "@/components/calendar-queue-actions";
+import {
+  UnassignAllControl,
+  UnassignTaskForm,
+  UnscheduleAllControl,
+} from "@/components/calendar-queue-actions";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +49,12 @@ type QueueTask = {
   work_order: { id: number; work_order_number: string; client: { name: string } | null } | null;
   assignment: Array<{ id: number; status: string; worker_id: number }>;
 };
-type UpcomingScheduleTarget = { task_id: number | null; work_order_id: number | null };
+type UpcomingScheduleTarget = {
+  task_id: number | null;
+  work_order_id: number | null;
+  planned_date: string;
+  worker_id: number | null;
+};
 export const metadata = { title: "Calendar" };
 export default async function CalendarPage({
   searchParams,
@@ -84,7 +93,11 @@ export default async function CalendarPage({
       )
       .not("status", "in", "(completed,cancelled)")
       .order("id"),
-    supabase.from("schedule_entry").select("task_id,work_order_id").gte("planned_date", today),
+    supabase
+      .from("schedule_entry")
+      .select("task_id,work_order_id,planned_date,worker_id")
+      .gte("planned_date", today)
+      .order("planned_date"),
   ]);
   const schedule = (scheduleData ?? []) as unknown as ScheduleItem[];
   const workers = (workerData ?? []).filter(
@@ -110,6 +123,32 @@ export default async function CalendarPage({
       activeAssignments(task).length > 0 &&
       !hasUpcomingSchedule(task),
   );
+  // Entries arrive ordered by planned_date, so the first one seen for a task or
+  // an order is its next date.
+  const nextDateByTask = new Map<number, string>();
+  const nextDateByOrder = new Map<number, string>();
+  for (const entry of upcomingTargets) {
+    if (entry.task_id != null && !nextDateByTask.has(entry.task_id)) {
+      nextDateByTask.set(entry.task_id, entry.planned_date);
+    }
+    if (entry.work_order_id != null && !nextDateByOrder.has(entry.work_order_id)) {
+      nextDateByOrder.set(entry.work_order_id, entry.planned_date);
+    }
+  }
+  // Built from the unfiltered worker rows: a schedule can still belong to
+  // somebody who has since been deactivated.
+  const workerNameById = new Map(
+    ((workerData ?? []) as unknown as WorkerRow[]).map((worker) => [
+      worker.id,
+      worker.user_profile?.display_name ?? `Worker ${worker.id}`,
+    ]),
+  );
+  const nextDateFor = (task: QueueTask) =>
+    nextDateByTask.get(task.id) ??
+    (task.work_order ? nextDateByOrder.get(task.work_order.id) : undefined);
+  const scheduled = taskRows
+    .filter((task) => planningStatuses.has(task.status) && hasUpcomingSchedule(task))
+    .sort((a, b) => (nextDateFor(a) ?? "").localeCompare(nextDateFor(b) ?? ""));
   const unassigned = taskRows.filter(
     (task) => planningStatuses.has(task.status) && activeAssignments(task).length === 0,
   );
@@ -226,6 +265,53 @@ export default async function CalendarPage({
               })}
             </div>
           ))}
+        </div>
+      </Card>
+      <Card className="mt-6 overflow-visible">
+        <div className="flex flex-col gap-3 border-b border-[#e8e4dc] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold">Scheduled</h2>
+            <p className="text-sm text-[#7a8380]">
+              Every job with an upcoming date, whichever week it falls in.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge tone={scheduled.length ? "teal" : "green"}>{scheduled.length}</Badge>
+            {scheduled.length > 0 && <UnscheduleAllControl />}
+          </div>
+        </div>
+        <div className="divide-y divide-[#e9e5dd]">
+          {scheduled.map((task) => {
+            const next = nextDateFor(task);
+            const workerId = activeAssignments(task)[0]?.worker_id;
+            return (
+              <Link
+                key={task.id}
+                href={`/manager/work-orders/${task.work_order?.id}`}
+                className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-[#faf9f6]"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{task.description}</p>
+                  <p className="mt-1 text-xs text-[#7a8380]">
+                    {task.work_order?.work_order_number}
+                    {task.work_order?.client?.name ? ` · ${task.work_order.client.name}` : ""}
+                    {workerId != null
+                      ? ` · ${workerNameById.get(workerId) ?? "Unknown worker"}`
+                      : ""}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {next && <Badge tone="teal">{format(parseISO(next), "EEE d MMM")}</Badge>}
+                  <CalendarDays className="h-4 w-4 text-[#0077a8]" />
+                </div>
+              </Link>
+            );
+          })}
+          {!scheduled.length && (
+            <p className="p-8 text-center text-sm text-[#7a8380]">
+              Nothing is scheduled. Assign dates from a work order to fill the calendar.
+            </p>
+          )}
         </div>
       </Card>
       <Card className="mt-6 overflow-visible">

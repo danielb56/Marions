@@ -301,8 +301,9 @@ export async function unassignAllUnscheduled(
   };
 }
 
-// Retained for compatibility with older clients. The calendar queue now uses
-// unassignAllUnscheduled because its rows have no upcoming schedules to remove.
+// Backs the Unschedule all button on the calendar's Scheduled queue. Assignments
+// survive, so the jobs land in Assigned but unscheduled rather than becoming
+// unassigned work.
 export async function unscheduleAllUpcoming(
   _: ActionState,
   formData: FormData,
@@ -326,7 +327,7 @@ export async function unscheduleAllUpcoming(
     ok: true,
     message:
       removed > 0
-        ? `${removed} upcoming schedule ${removed === 1 ? "entry" : "entries"} removed across ${result?.affectedWorkers ?? 0} worker${result?.affectedWorkers === 1 ? "" : "s"}.`
+        ? `${removed} upcoming schedule ${removed === 1 ? "entry" : "entries"} removed across ${result?.affectedWorkers ?? 0} worker${result?.affectedWorkers === 1 ? "" : "s"}. The jobs are now in Assigned but unscheduled.`
         : "There were no upcoming schedules to remove.",
   };
 }
