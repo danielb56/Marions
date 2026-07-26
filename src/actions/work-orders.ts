@@ -323,22 +323,28 @@ export async function unscheduleAllUpcoming(
 }
 
 export async function cancelWorkOrder(formData: FormData) {
-  const profile = await assertRole("manager");
+  await assertRole("manager");
   const workOrderId = Number(formData.get("workOrderId"));
   const reason = String(formData.get("reason") ?? "").trim();
   if (!workOrderId || !reason) throw new Error("A cancellation reason is required");
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("work_order")
-    .update({
-      status: "cancelled",
-      cancelled_at: new Date().toISOString(),
-      cancelled_reason: reason,
-    })
-    .eq("id", workOrderId)
-    .eq("tenant_id", profile.tenant_id);
-  if (error) throw new Error("Could not cancel work order");
+  // The RPC cancels the order's active tasks, clears their upcoming schedule
+  // entries and notifies each affected worker once. Updating work_order alone
+  // left every task assigned and startable on workers' phones.
+  const { error } = await supabase.rpc("cancel_work_order", {
+    p_work_order_id: workOrderId,
+    p_reason: reason,
+  });
+  if (error) {
+    logger.error("work_order.cancel_failed", error);
+    throw new Error("Could not cancel work order");
+  }
   revalidatePath("/manager/work-orders");
+  revalidatePath("/manager");
+  revalidatePath("/manager/calendar");
+  revalidatePath("/worker");
+  revalidatePath("/worker/jobs");
+  revalidatePath("/worker/upcoming");
   redirect("/manager/work-orders");
 }
 
